@@ -1,0 +1,227 @@
+[
+  {
+    "_id": "59c2ae6bc6ec8d2776a54f6b",
+    "index": 0,
+    "guid": "ea9f9d34-7dd1-4725-a164-6ba929f1a0a8",
+    "isActive": true,
+    "balance": "$1,214.99",
+    "picture": "http://placehold.it/32x32",
+    "age": 29,
+    "eyeColor": "brown",
+    "name": "Pitts Hamilton",
+    "gender": "male",
+    "company": "MANUFACT",
+    "email": "pittshamilton@manufact.com",
+    "phone": "+1 (940) 561-3219",
+    "address": "672 Woodpoint Road, Chesterfield, New Mexico, 1620",
+    "about": "Laborum commodo nulla do proident anim. Non aute non commodo est eu sint quis ut minim ex consequat. Dolore excepteur ex nulla nisi consectetur nulla. Amet labore excepteur duis deserunt non labore consectetur incididunt dolore sint officia non consequat.\r\n",
+    "registered": "2014-02-09T04:19:46 -09:00",
+    "latitude": 52.016016,
+    "longitude": 106.342196,
+    "tags": [
+      "adipisicing",
+      "id",
+      "occaecat",
+      "reprehenderit",
+      "cillum",
+      "irure",
+      "enim"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Glenda Lane"
+      },
+      {
+        "id": 1,
+        "name": "Charmaine Burch"
+      },
+      {
+        "id": 2,
+        "name": "Frieda Knox"
+      }
+    ],
+    "greeting": "Hello, Pitts Hamilton! You have 8 unread messages.",
+    "favoriteFruit": "strawberry"
+  },
+  {
+    "_id": "59c2ae6b85658fd58df4a108",
+    "index": 1,
+    "guid": "582fed7e-d710-4769-8e5b-d970e0805042",
+    "isActive": true,
+    "balance": "$1,683.74",
+    "picture": "http://placehold.it/32x32",
+    "age": 31,
+    "eyeColor": "green",
+    "name": "Bernice Evans",
+    "gender": "female",
+    "company": "HOUSEDOWN",
+    "email": "berniceevans@housedown.com",
+    "phone": "+1 (943) 498-2668",
+    "address": "149 Reed Street, Clara, Arizona, 4590",
+    "about": "Ex consectetur amet minim voluptate id. Minim ipsum consequat irure consequat. Eu proident sunt quis do dolor ullamco nisi. Velit duis magna cillum ad anim dolor pariatur sint. Enim incididunt est do voluptate minim qui sint.\r\n",
+    "registered": "2017-05-29T06:19:56 -09:00",
+    "latitude": -87.734267,
+    "longitude": 48.506401,
+    "tags": [
+      "in",
+      "proident",
+      "duis",
+      "consequat",
+      "ut",
+      "anim",
+      "veniam"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Petersen Klein"
+      },
+      {
+        "id": 1,
+        "name": "Hebert Patterson"
+      },
+      {
+        "id": 2,
+        "name": "Henderson Dunn"
+      }
+    ],
+    "greeting": "Hello, Bernice Evans! You have 6 unread messages.",
+    "favoriteFruit": "strawberry"
+  },
+  {
+    "_id": "59c2ae6b5960bab739b7130a",
+    "index": 2,
+    "guid": "00cf0a7e-a339-4b0a-a0d7-dfc983c40daa",
+    "isActive": false,
+    "balance": "$3,582.40",
+    "picture": "http://placehold.it/32x32",
+    "age": 22,
+    "eyeColor": "brown",
+    "name": "Kasey Delacruz",
+    "gender": "female",
+    "company": "MARTGO",
+    "email": "kaseydelacruz@martgo.com",
+    "phone": "+1 (975) 528-3803",
+    "address": "148 Greene Avenue, Crumpler, Maine, 2139",
+    "about": "Culpa aliqua sint velit aute dolore non esse proident deserunt officia magna anim. Deserunt est sunt labore ad consectetur ut officia aliqua ut exercitation ad. Esse ad ea adipisicing non nulla laborum est officia. Irure laboris incididunt id proident adipisicing sunt do officia laborum esse anim.\r\n",
+    "registered": "2014-01-11T01:00:48 -09:00",
+    "latitude": -28.705454,
+    "longitude": 37.947179,
+    "tags": [
+      "elit",
+      "cillum",
+      "veniam",
+      "est",
+      "qui",
+      "laborum",
+      "mollit"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Shauna Mooney"
+      },
+      {
+        "id": 1,
+        "name": "Bryant Gonzales"
+      },
+      {
+        "id": 2,
+        "name": "Clara Beard"
+      }
+    ],
+    "greeting": "Hello, Kasey Delacruz! You have 6 unread messages.",
+    "favoriteFruit": "apple"
+  },
+  {
+    "_id": "59c2ae6b4f482db34b280df9",
+    "index": 3,
+    "guid": "60d299cc-620b-477f-b2d2-b824300964a5",
+    "isActive": true,
+    "balance": "$1,348.42",
+    "picture": "http://placehold.it/32x32",
+    "age": 34,
+    "eyeColor": "blue",
+    "name": "Sloan Stuart",
+    "gender": "male",
+    "company": "SYBIXTEX",
+    "email": "sloanstuart@sybixtex.com",
+    "phone": "+1 (920) 473-2072",
+    "address": "862 Garland Court, Dupuyer, Vermont, 9086",
+    "about": "Ut nulla enim elit et tempor irure est esse labore officia duis nostrud. Sunt occaecat ex nulla aliquip nostrud amet in anim dolore anim deserunt id. Labore non proident enim Lorem. Mollit est nulla sunt proident et proident. Culpa proident duis voluptate sunt.\r\n",
+    "registered": "2015-11-22T02:18:39 -09:00",
+    "latitude": 86.504917,
+    "longitude": 140.692044,
+    "tags": [
+      "nulla",
+      "cillum",
+      "nisi",
+      "consectetur",
+      "deserunt",
+      "est",
+      "qui"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Cotton Macias"
+      },
+      {
+        "id": 1,
+        "name": "Woods Kerr"
+      },
+      {
+        "id": 2,
+        "name": "Charlene Cole"
+      }
+    ],
+    "greeting": "Hello, Sloan Stuart! You have 9 unread messages.",
+    "favoriteFruit": "banana"
+  },
+  {
+    "_id": "59c2ae6bff8d836a73918e77",
+    "index": 4,
+    "guid": "bdf4b1d8-7e9e-4cf7-afb2-bcdd299549e9",
+    "isActive": true,
+    "balance": "$1,767.05",
+    "picture": "http://placehold.it/32x32",
+    "age": 22,
+    "eyeColor": "green",
+    "name": "Laurie Terrell",
+    "gender": "female",
+    "company": "ZENSUS",
+    "email": "laurieterrell@zensus.com",
+    "phone": "+1 (832) 556-3500",
+    "address": "260 Fenimore Street, Brambleton, Tennessee, 1943",
+    "about": "Officia voluptate veniam laboris incididunt eu esse aliquip. Tempor fugiat culpa ullamco velit. Voluptate adipisicing est Lorem aliqua cupidatat ut. Incididunt minim fugiat qui ut nisi occaecat. Velit velit ullamco amet sit excepteur fugiat aliqua nisi dolore adipisicing magna ex.\r\n",
+    "registered": "2016-01-10T04:34:12 -09:00",
+    "latitude": -31.766085,
+    "longitude": -68.755093,
+    "tags": [
+      "commodo",
+      "amet",
+      "duis",
+      "aliqua",
+      "sint",
+      "sint",
+      "aliquip"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Rebekah Lloyd"
+      },
+      {
+        "id": 1,
+        "name": "Greene Leach"
+      },
+      {
+        "id": 2,
+        "name": "Magdalena Irwin"
+      }
+    ],
+    "greeting": "Hello, Laurie Terrell! You have 1 unread messages.",
+    "favoriteFruit": "strawberry"
+  }
+]
