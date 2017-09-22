@@ -5,6 +5,7 @@ addons:
   apt:
     packages:
       - g++-5
+      - clang-3.6
       - cmake
       - cmake-data
     sources:
