@@ -4,12 +4,10 @@ sudo: false
 addons:
   apt:
     packages:
-      - g++-5.4
-      - clang-4.0
+      - g++-5
       - cmake
       - cmake-data
     sources:
-      - llvm-toolchain-precise-4.0
       - ubuntu-toolchain-r-test
       - george-edison55-precise-backports
 install:
@@ -17,9 +15,7 @@ install:
 matrix:
   include:
     - os: linux
-      env: COMPILER_NAME=gcc CXX=g++-5.4 CC=gcc-5.4
-    - os: linux
-      env: COMPILER_NAME=clang CXX=clang++-4.0 CC=clang-4.0
+      env: COMPILER_NAME=gcc CXX=g++-5 CC=gcc-5
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR}/test/
