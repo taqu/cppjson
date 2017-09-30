@@ -6,7 +6,7 @@ Simple SAX(Simple API for XML) like JSON parser for C++.
 
 # Usage
 To create the implementation, put '#define CPPJSON_IMPLEMENTATION' before including "cppjson.h".  
-Make a class which derived from cppjson::JSONEventHandler, and pass that to cppjson::JSONReader.  
+Make a class which is derived from cppjson::JSONEventHandler, and pass that to cppjson::JSONReader.  
 ```cpp
 #define CPPJSON_IMPLEMENTATION
 #include "cppjson.h"
