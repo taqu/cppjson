@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <!--- /** @page README --->
 # Introduction
 [![Build Status](https://travis-ci.org/taqu/cppjson.svg?branch=master)](https://travis-ci.org/taqu/cppjson)
@@ -47,9 +46,4 @@ int main(int argc, char** argv)
 }
 ```
 <!--- */ --->
-=======
-# cppjson
-[![Build Status](https://travis-ci.org/taqu/cppjson.svg?branch=master)](https://travis-ci.org/taqu/cppjson)
 
-c++ json parser
->>>>>>> 75ca1014f154992f61be8964fc399d477d5e7ab8
