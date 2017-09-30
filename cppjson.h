@@ -27,8 +27,11 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <http://unlicense.org>
 */
 /**
-@author t-sakai
-@date 2017/09/06 create
+@file cppjson.h
+
+USAGE:
+  put '#define CPPJSON_IMPLEMENTATION' before including this file to create the implementation.
+
 */
 #include <cassert>
 #include <cstdint>
@@ -57,6 +60,27 @@ namespace cppjson
 
     typedef char Char;
     typedef bool boolean;
+#ifdef _MSC_VER
+    typedef s32 off_t;
+    #ifndef CPPJSON_FSEEK
+    #define CPPJSON_FSEEK(f,p,o) fseek((f),(p),(o))
+    #endif
+
+    #ifndef CPPJSON_FTELL
+    #define CPPJSON_FTELL(f) ftell((f))
+    #endif
+
+#else
+    typedef s32 off_t;
+    #ifndef CPPJSON_FSEEK
+    #define CPPJSON_FSEEK(f,p,o) fseek((f),(p),(o))
+    #endif
+
+    #ifndef CPPJSON_FTELL
+    #define CPPJSON_FTELL(f) ftell((f))
+    #endif
+#endif
+
 #endif
 
 #ifndef CPPJSON_MALLOC
@@ -74,6 +98,7 @@ namespace cppjson
 #ifndef CPPJSON_ASSERT
 #define CPPJSON_ASSERT(exp) assert(exp)
 #endif
+
 
     template<class T>
     inline void swap(T& l, T& r)
@@ -393,15 +418,15 @@ namespace cppjson
             return;
         }
 
-        //新しいバッファ確保
+        //allocate new buffer
         T *newItems = (T*)CPPJSON_MALLOC(capacity*sizeof(T));
 
-        //コピーコンストラクタでコピー。古い要素のデストラクト
+        //copy construct
         for(s32 i=0; i<size_; ++i){
             CPPJSON_PLACEMENT_NEW(&newItems[i]) T(std::move(items_[i]));
             items_[i].~T();
         }
-        //古いバッファ破棄
+        //deallocate old buffer
         CPPJSON_FREE(items_);
         items_ = newItems;
         capacity_ = capacity;
@@ -411,7 +436,6 @@ namespace cppjson
     void Array<T>::resize(s32 size)
     {
         if(size < size_){
-            //デストラクト
             for(s32 i=size; i<size_; ++i){
                 items_[i].~T();
             }
@@ -470,8 +494,8 @@ namespace cppjson
         /**
         @return Success: position, Faile: -1
         */
-        virtual s32 tell() const =0;
-        virtual boolean seek(s32 pos) =0;
+        virtual off_t tell() const =0;
+        virtual boolean seek(off_t pos) =0;
 
         /**
         @return Success: input c, Fail: EOF
@@ -482,7 +506,7 @@ namespace cppjson
         @return Success: input c, Fail: EOF
         */
         virtual s32 unget(s32 c) =0;
-        virtual s32 read(u8* dst, s32 size) =0;
+        virtual s32 read(u8* dst, off_t size) =0;
 
         virtual boolean isEOF() const =0;
     protected:
@@ -500,14 +524,14 @@ namespace cppjson
     public:
         ISStream();
         ISStream(ISStream&& rhs);
-        ISStream(s32 length, const s8* str);
+        ISStream(off_t length, const s8* str);
         virtual ~ISStream();
 
-        s32 tell() const override;
-        boolean seek(s32 pos) override;
+        off_t tell() const override;
+        boolean seek(off_t pos) override;
         s32 get() override;
         s32 unget(s32 c) override;
-        s32 read(u8* dst, s32 size) override;
+        s32 read(u8* dst, off_t size) override;
 
         boolean isEOF() const override;
 
@@ -516,8 +540,8 @@ namespace cppjson
         ISStream(const ISStream&) = delete;
         ISStream& operator=(const ISStream&) = delete;
 
-        s32 pos_;
-        s32 length_;
+        off_t pos_;
+        off_t length_;
         const s8* str_;
     };
 
@@ -529,11 +553,11 @@ namespace cppjson
         IFStream(FILE* file);
         virtual ~IFStream();
 
-        s32 tell() const override;
-        boolean seek(s32 pos) override;
+        off_t tell() const override;
+        boolean seek(off_t pos) override;
         s32 get() override;
         s32 unget(s32 c) override;
-        s32 read(u8* dst, s32 size) override;
+        s32 read(u8* dst, off_t size) override;
 
         boolean isEOF() const override;
 
@@ -542,7 +566,7 @@ namespace cppjson
         IFStream(const IFStream&) = delete;
         IFStream& operator=(const IFStream&) = delete;
 
-        s32 start_;
+        off_t pos_;
         FILE* file_;
     };
 
@@ -587,8 +611,8 @@ namespace cppjson
     //---------------------------------------------------------------
     struct Range
     {
-        s32 start_;
-        s32 length_;
+        off_t start_;
+        off_t length_;
 
         inline void reset()
         {
@@ -605,7 +629,7 @@ namespace cppjson
     {
     public:
         RangeStream(IStream* stream, const Range& range);
-        s32 length() const;
+        off_t length() const;
         s32 read(u8* dst);
         s32 readAsString(Char* str);
         s32 readAsString(String& str);
@@ -613,8 +637,8 @@ namespace cppjson
         f32 readAsFloat(f32 defaultValue=0.0f);
     private:
         IStream* stream_;
-        s32 start_;
-        s32 length_;
+        off_t start_;
+        off_t length_;
     };
 
     //---------------------------------------------------------------
@@ -656,13 +680,13 @@ namespace cppjson
     class JSONReader
     {
     public:
+        static const s32 Flag_ErrorReported = (0x01<<0);
+
         JSONReader(IStream& istream, JSONEventHandler& handler);
         ~JSONReader();
 
-        boolean read();
+        boolean read(s32 flags = 0);
     private:
-        static const s32 Flag_ErrorReported = (0x01<<0);
-
         boolean skipSpace();
         boolean check(const s8* str);
         void setStart(Range& range);
@@ -688,6 +712,7 @@ namespace cppjson
 }
 #endif //INC_CPPJSON_H_
 
+//#define CPPJSON_IMPLEMENTATION
 #ifdef CPPJSON_IMPLEMENTATION
 namespace cppjson
 {
@@ -903,7 +928,7 @@ namespace cppjson
         rhs.str_ = NULL;
     }
 
-    ISStream::ISStream(s32 length, const s8* str)
+    ISStream::ISStream(off_t length, const s8* str)
         :pos_(0)
         ,length_(length)
         ,str_(str)
@@ -919,12 +944,12 @@ namespace cppjson
         str_ = NULL;
     }
 
-    s32 ISStream::tell() const
+    off_t ISStream::tell() const
     {
         return pos_;
     }
 
-    boolean ISStream::seek(s32 pos)
+    boolean ISStream::seek(off_t pos)
     {
         CPPJSON_ASSERT(0<=pos && pos<length_);
         pos_ = pos;
@@ -949,14 +974,14 @@ namespace cppjson
         return c;
     }
 
-    s32 ISStream::read(u8* dst, s32 size)
+    s32 ISStream::read(u8* dst, off_t size)
     {
         CPPJSON_ASSERT(NULL != dst);
-        s32 end = pos_+size;
+        off_t end = pos_+size;
         if(length_<end){
             return 0;
         }
-        for(s32 i=0; i<size; ++i){
+        for(off_t i=0; i<size; ++i){
             dst[i] = str_[pos_];
             ++pos_;
         }
@@ -989,41 +1014,53 @@ namespace cppjson
     //---
     //---------------------------------------------------------------
     IFStream::IFStream()
-        :start_(0)
+        :pos_(0)
         ,file_(NULL)
     {
     }
 
     IFStream::IFStream(IFStream&& rhs)
-        :start_(rhs.start_)
+        :pos_(rhs.pos_)
         ,file_(rhs.file_)
     {
-        rhs.start_ = 0;
+        rhs.pos_ = 0;
         rhs.file_ = NULL;
     }
 
     IFStream::IFStream(FILE* file)
-        :start_(0)
+        :pos_(0)
         ,file_(file)
     {
         CPPJSON_ASSERT(NULL != file_);
-        start_ = ftell(file_);
+#if _MSC_VER
+        pos_ = CPPJSON_FTELL(file_);
+#else
+        pos_ = CPPJSON_FTELL(file_);
+#endif
     }
 
     IFStream::~IFStream()
     {
-        start_ = 0;
+        pos_ = 0;
         file_ = NULL;
     }
 
-    s32 IFStream::tell() const
+    off_t IFStream::tell() const
     {
-        return ftell(file_)-start_;
+#if _MSC_VER
+        return CPPJSON_FTELL(file_)-pos_;
+#else
+        return CPPJSON_FTELL(file_)-pos_;
+#endif
     }
 
-    boolean IFStream::seek(s32 pos)
+    boolean IFStream::seek(off_t pos)
     {
-        return 0<=fseek(file_, start_+pos, SEEK_SET);
+#if _MSC_VER
+        return 0<=CPPJSON_FSEEK(file_, pos_+pos, SEEK_SET);
+#else 
+        return 0<=CPPJSON_FSEEK(file_, pos_+pos, SEEK_SET);
+#endif
     }
 
     s32 IFStream::get()
@@ -1036,7 +1073,7 @@ namespace cppjson
         return ungetc(c, file_);
     }
 
-    s32 IFStream::read(u8* dst, s32 size)
+    s32 IFStream::read(u8* dst, off_t size)
     {
         CPPJSON_ASSERT(NULL != dst);
         return static_cast<s32>(fread(dst, size, 1, file_));
@@ -1052,10 +1089,10 @@ namespace cppjson
         if(this == &rhs){
             return *this;
         }
-        start_ = rhs.start_;
+        pos_ = rhs.pos_;
         file_ = rhs.file_;
 
-        rhs.start_ = 0;
+        rhs.pos_ = 0;
         rhs.file_ = NULL;
         return *this;
     }
@@ -1075,7 +1112,7 @@ namespace cppjson
         CPPJSON_ASSERT(0<=length_);
     }
 
-    s32 RangeStream::length() const
+    off_t RangeStream::length() const
     {
         return length_;
     }
@@ -1083,7 +1120,7 @@ namespace cppjson
     s32 RangeStream::read(u8* dst)
     {
         CPPJSON_ASSERT(NULL != dst);
-        s32 pos = stream_->tell();
+        off_t pos = stream_->tell();
         if(!stream_->seek(start_)){
             return 0;
         }
@@ -1097,7 +1134,7 @@ namespace cppjson
     s32 RangeStream::readAsString(Char* str)
     {
         CPPJSON_ASSERT(NULL != str);
-        s32 pos = stream_->tell();
+        off_t pos = stream_->tell();
         if(!stream_->seek(start_)){
             return 0;
         }
@@ -1111,8 +1148,8 @@ namespace cppjson
 
     s32 RangeStream::readAsString(String& str)
     {
-        str.resize(length_);
-        s32 pos = stream_->tell();
+        str.resize(static_cast<s32>(length_));
+        off_t pos = stream_->tell();
         if(!stream_->seek(start_)){
             return 0;
         }
@@ -1129,7 +1166,7 @@ namespace cppjson
     {
         static const s32 MaxSize = 32;
         CPPJSON_ASSERT(length_<MaxSize);
-        s32 pos = stream_->tell();
+        off_t pos = stream_->tell();
         if(!stream_->seek(start_)){
             return defaultValue;
         }
@@ -1149,7 +1186,7 @@ namespace cppjson
     {
         static const s32 MaxSize = 32;
         CPPJSON_ASSERT(length_<MaxSize);
-        s32 pos = stream_->tell();
+        off_t pos = stream_->tell();
         if(!stream_->seek(start_)){
             return defaultValue;
         }
@@ -1180,10 +1217,10 @@ namespace cppjson
     {
     }
 
-    boolean JSONReader::read()
+    boolean JSONReader::read(s32 flags)
     {
         handler_.begin();
-        flags_ = 0;
+        flags_ = flags;
         Range value;
         if(!skipSpace()){
             if(istream_.isEOF()){
@@ -1194,8 +1231,17 @@ namespace cppjson
             }
         }
         s32 type = getValue(value);
-        if(JSON_Error == type){
+        if(JSON_Error == type || (JSON_Array != type && JSON_Object != type)){
             return false;
+        }
+        while(!istream_.isEOF()){
+            s32 c = istream_.get();
+            if(c==EOF){
+                break;
+            }
+            if(!isspace(c)){
+                return false;
+            }
         }
         handler_.root(type, RangeStream(&istream_, value));
         handler_.end();
@@ -1248,6 +1294,7 @@ namespace cppjson
             return JSON_Error;
         }
         flags_ |= Flag_ErrorReported;
+        off_t pos = istream_.tell();
         if(!istream_.seek(0)){
             handler_.onError(-1, -1);
             return JSON_Error;
@@ -1275,8 +1322,11 @@ namespace cppjson
             }else{
                 ++count;
             }
+            if(istream_.tell() == pos){
+                break;
+            }
         }
-        handler_.onError(line, count);
+        handler_.onError(line+1, count);
         return JSON_Error;
     }
 
@@ -1498,6 +1548,9 @@ namespace cppjson
                         return onError();
                     }
                     break;
+                case '\t':
+                case '\n':
+                    return onError();
                 }
                 continue;
 
@@ -1563,7 +1616,9 @@ namespace cppjson
             if(!isNumber(c)){
                 return onError();
             }
-            if(JSON_Error == getDigit(false)){
+            istream_.unget(c);
+            c = getDigit(false);
+            if(JSON_Error == c){
                 return JSON_Error;
             }
             type = JSON_Float;
@@ -1576,19 +1631,20 @@ namespace cppjson
 
     s32 JSONReader::getDigit(boolean unget)
     {
+        s32 c = EOF;
         for(;;){
-            s32 c = istream_.get();
+            c = istream_.get();
             if(c<0){
-                onError();
+                return onError();
             }
             if(!isNumber(c)){
                 if(unget){
-                    return (EOF != istream_.unget(c))? JSON_OK : onError();
+                    return (EOF != istream_.unget(c))? c : onError();
                 }
                 break;
             }
         }
-        return JSON_OK;
+        return c;
     }
 
     boolean JSONReader::isNumber(s32 c) const

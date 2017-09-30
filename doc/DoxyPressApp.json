@@ -22,7 +22,7 @@
         "extract-static": false,
         "file-version-filter": "",
         "force-local-includes": false,
-        "full-path-names": true,
+        "full-path-names": false,
         "generate-bug-list": true,
         "generate-deprecate-list": true,
         "generate-test-list": true,
@@ -250,7 +250,8 @@
         ],
         "input-recursive": false,
         "input-source": [
-            "../"
+            "../",
+            "../README.md"
         ],
         "mdfile-mainpage": ""
     },
@@ -313,7 +314,7 @@
         "html-stylesheets": [
             ""
         ],
-        "html-timestamp": true,
+        "html-timestamp": false,
         "mathjax-codefile": "",
         "mathjax-extensions": [
             ""

@@ -55,7 +55,7 @@ void EventHandler::root(cppjson::s32 /*type*/, cppjson::RangeStream /*value*/)
 void EventHandler::value(cppjson::s32 type, cppjson::RangeStream v)
 {
     printIndent();
-    int length = v.length();
+    cppjson::off_t length = v.length();
     length += 1;
     char* str = (char*)malloc(length);
 
@@ -101,7 +101,7 @@ void EventHandler::value(cppjson::s32 type, cppjson::RangeStream v)
 void EventHandler::keyValue(cppjson::RangeStream key, cppjson::s32 type, cppjson::RangeStream value)
 {
     printIndent();
-    int length = key.length()<value.length()? value.length() : key.length();
+    cppjson::off_t length = key.length()<value.length()? value.length() : key.length();
     length += 1;
     char* str = (char*)malloc(length);
 
