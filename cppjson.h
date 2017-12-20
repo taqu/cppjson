@@ -712,7 +712,6 @@ namespace cppjson
 }
 #endif //INC_CPPJSON_H_
 
-//#define CPPJSON_IMPLEMENTATION
 #ifdef CPPJSON_IMPLEMENTATION
 namespace cppjson
 {
@@ -1656,4 +1655,4 @@ namespace cppjson
         return ('1'<=c && c<='9');
     }
 }
-#endif //INC_CPPJSON_H_
+#endif //CPPJSON_IMPLEMENTATION
