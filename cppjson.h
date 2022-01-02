@@ -58,6 +58,7 @@ For more information, please refer to <http://unlicense.org>
 */
 #include <cassert>
 #include <cstdint>
+#include <cstddef>
 #include <limits>
 
 namespace cppjson
@@ -239,21 +240,42 @@ public:
     bool tryGetValue(JsonValueProxy& value, JsonType type, u32 length, const char* key) const;
 
     JsonValueProxy getValue(u32 length, const char* key) const;
-    JsonStringProxy getAsString(u32 length, const char* key) const;
     template<class T>
     T getAs(u32 length, const char* key) const;
 
+    template<>
+    JsonStringProxy getAs<JsonStringProxy>(u32 length, const char* key) const
+    {
+        return getAsString(length, key);
+    }
+
     template<class T>
     T getAs(u32 length, const char* key, T defaultValue) const;
+
     template<>
-    s32 getAs<s32>(u32 length, const char* key, s32 defaultValue) const;
+    s32 getAs<s32>(u32 length, const char* key, s32 defaultValue) const
+    {
+        return getAsInt(length, key, defaultValue);
+    }
     template<>
-    f32 getAs<f32>(u32 length, const char* key, f32 defaultValue) const;
+    f32 getAs<f32>(u32 length, const char* key, f32 defaultValue) const
+    {
+        return getAsFloat(length, key, defaultValue);
+    }
     template<>
-    bool getAs<bool>(u32 length, const char* key, bool defaultValue) const;
+    bool getAs<bool>(u32 length, const char* key, bool defaultValue) const
+    {
+        return getAsBoolean(length, key, defaultValue);
+    }
 
     const JsonParser* parent_;
     u32 element_;
+
+private:
+    JsonStringProxy getAsString(u32 length, const char* key) const;
+    s32 getAsInt(u32 length, const char* key, s32 defaultValue) const;
+    f32 getAsFloat(u32 length, const char* key, f32 defaultValue) const;
+    bool getAsBoolean(u32 length, const char* key, bool defaultValue) const;
 };
 
 template<class T>

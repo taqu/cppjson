@@ -1,5 +1,10 @@
 #include "cppjson.h"
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#include <sys/types.h> 
+#include <dirent.h> 
+#endif
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -79,7 +84,7 @@ void test(const std::vector<Test>& tests, const char* directory)
 {
     cppjson::JsonParser parser;
     std::string path;
-    size_t skip = 39;
+    size_t skip = 0;
     for(size_t i = 0; i < tests.size(); ++i) {
         if(i < skip) {
             continue;
@@ -115,46 +120,6 @@ void test(const std::vector<Test>& tests, const char* directory)
         }
         ::free(data.data_);
     }
-}
-
-struct GltfModel
-{
-    std::string directory_;
-    std::string path_;
-};
-
-void gather(std::vector<GltfModel>& results, const std::string& directory, const char* ext)
-{
-    std::string path = directory;
-    path += "*";
-    WIN32_FIND_DATA findFileData;
-    HANDLE handle = FindFirstFileA(path.c_str(), &findFileData);
-    if(CPPJSON_NULL == handle) {
-        return;
-    }
-    for(;;) {
-        if(false == FindNextFileA(handle, &findFileData)) {
-            break;
-        }
-        std::string child = directory;
-        child += findFileData.cFileName;
-        if(0 == strcmp(findFileData.cFileName, ".") || 0 == strcmp(findFileData.cFileName, "..")){
-            continue;
-        }
-        if(FILE_ATTRIBUTE_DIRECTORY == (FILE_ATTRIBUTE_DIRECTORY & findFileData.dwFileAttributes)){
-            child += "/";
-            gather(results, child, ext);
-            continue;
-        }
-        if(nullptr == strstr(findFileData.cFileName, ext)) {
-            continue;
-        }
-        GltfModel test;
-        test.directory_ = directory;
-        test.path_ = child;
-        results.push_back(std::move(test));
-    }
-    FindClose(handle);
 }
 
 int main(void)

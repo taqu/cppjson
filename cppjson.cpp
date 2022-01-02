@@ -4,7 +4,7 @@
 This software is distributed under two licenses, choose whichever you like.
 
 ## MIT License
-Copyright (c) 2020-2021 Takuro Sakai
+Copyright (c) 2022 Takuro Sakai
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,7 @@ For more information, please refer to <http://unlicense.org>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <iterator>
 #include <limits>
 
@@ -474,8 +475,7 @@ JsonStringProxy JsonObjectProxy::getAsString(u32 length, const char* key) const
     }
 }
 
-template<>
-s32 JsonObjectProxy::getAs<s32>(u32 length, const char* key, s32 defaultValue) const
+s32 JsonObjectProxy::getAsInt(u32 length, const char* key, s32 defaultValue) const
 {
     CPPJSON_ASSERT(CPPJSON_NULL != key);
     u32 index = existsKey(length, key);
@@ -493,8 +493,7 @@ s32 JsonObjectProxy::getAs<s32>(u32 length, const char* key, s32 defaultValue) c
     return intValue.asInt();
 }
 
-template<>
-f32 JsonObjectProxy::getAs<f32>(u32 length, const char* key, f32 defaultValue) const
+f32 JsonObjectProxy::getAsFloat(u32 length, const char* key, f32 defaultValue) const
 {
     CPPJSON_ASSERT(CPPJSON_NULL != key);
     u32 index = existsKey(length, key);
@@ -513,8 +512,7 @@ f32 JsonObjectProxy::getAs<f32>(u32 length, const char* key, f32 defaultValue) c
     return JsonType::Integer == type ? value.asInt() : value.asFloat();
 }
 
-template<>
-bool JsonObjectProxy::getAs<bool>(u32 length, const char* key, bool defaultValue) const
+bool JsonObjectProxy::getAsBoolean(u32 length, const char* key, bool defaultValue) const
 {
     CPPJSON_ASSERT(CPPJSON_NULL != key);
     u32 index = existsKey(length, key);
