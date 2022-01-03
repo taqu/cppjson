@@ -42,7 +42,7 @@ if(MSVC)
     set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "/LTCG")
 
 elseif(UNIX)
-    set(DEFAULT_CXX_FLAGS "-Wall -O2 -std=c++17 -std=gnu++17 -march=x86_64-v3")
+    set(DEFAULT_CXX_FLAGS "-Wall -O2 -std=c++17 -std=gnu++17 -march=x86-64-v3")
     set(CMAKE_CXX_FLAGS "${DEFAULT_CXX_FLAGS}")
 elseif(APPLE)
 endif()

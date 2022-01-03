@@ -96,7 +96,7 @@ using std::uintptr_t;
 #    define CPPJSON_ASSERT(exp)
 #endif
 
-typedef void* (*cppjson_malloc)(size_t);
+typedef void* (*cppjson_malloc)(std::size_t);
 typedef void (*cppjson_free)(void*);
 
 static constexpr u32 DefaultMaxNest = 512;
@@ -240,60 +240,32 @@ public:
     bool tryGetValue(JsonValueProxy& value, JsonType type, u32 length, const char* key) const;
 
     JsonValueProxy getValue(u32 length, const char* key) const;
-    template<class T>
-    T getAs(u32 length, const char* key) const;
-
-    template<>
-    JsonStringProxy getAs<JsonStringProxy>(u32 length, const char* key) const
-    {
-        return getAsString(length, key);
-    }
-
-    template<class T>
-    T getAs(u32 length, const char* key, T defaultValue) const;
-
-    template<>
-    s32 getAs<s32>(u32 length, const char* key, s32 defaultValue) const
-    {
-        return getAsInt(length, key, defaultValue);
-    }
-    template<>
-    f32 getAs<f32>(u32 length, const char* key, f32 defaultValue) const
-    {
-        return getAsFloat(length, key, defaultValue);
-    }
-    template<>
-    bool getAs<bool>(u32 length, const char* key, bool defaultValue) const
-    {
-        return getAsBoolean(length, key, defaultValue);
-    }
-
-    const JsonParser* parent_;
-    u32 element_;
-
-private:
     JsonStringProxy getAsString(u32 length, const char* key) const;
     s32 getAsInt(u32 length, const char* key, s32 defaultValue) const;
     f32 getAsFloat(u32 length, const char* key, f32 defaultValue) const;
     bool getAsBoolean(u32 length, const char* key, bool defaultValue) const;
+
+    template<class T>
+    T getAs(u32 length, const char* key) const;
+
+    const JsonParser* parent_;
+    u32 element_;
 };
 
+#if 0
 template<class T>
 T JsonObjectProxy::getAs(u32 length, const char* key) const
 {
     CPPJSON_ASSERT(CPPJSON_NULL != key);
     u32 index = existsKey(length, key);
     if(Invalid != index) {
-        return {parent_, (*parent_)[index].key_value_.value_};
+        JsonValue value = (*parent_)[index];
+        return {parent_, value.key_value_.value_};
     } else {
         return {CPPJSON_NULL, Invalid};
     }
 }
-
-template<class T>
-T JsonObjectProxy::getAs(u32 length, const char* key, T defaultValue) const
-{
-}
+#endif
 
 //--- JsonArrayIterator
 struct JsonArrayIterator
@@ -338,7 +310,7 @@ public:
 
     u32 size() const;
     JsonValueProxy getRoot() const;
-    const JsonValue& operator[](u32 index) const;
+    JsonValue operator[](u32 index) const;
     cursor row_data(u32 index) const;
 
 private:
@@ -405,5 +377,17 @@ private:
     Buffer buffer_;
 };
 
+template<class T>
+T JsonObjectProxy::getAs(u32 length, const char* key) const
+{
+    CPPJSON_ASSERT(CPPJSON_NULL != key);
+    u32 index = existsKey(length, key);
+    if(Invalid != index) {
+        JsonValue value = (*parent_)[index];
+        return {parent_, value.key_value_.value_};
+    } else {
+        return {CPPJSON_NULL, Invalid};
+    }
+}
 } // namespace cppjson
 #endif // INC_CPPJSON_H_

@@ -2,7 +2,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 #else
-#include <sys/types.h> 
+#include <stdlib.h>
+#include <string.h>
 #include <dirent.h> 
 #endif
 #include <fstream>
@@ -31,8 +32,32 @@ bool start_with(const std::string& filename, char c)
     return c == filename[0];
 }
 
+#ifndef _WIN32
+int ext(const char* str, const char* ext)
+{
+    const char* s = str;
+    while('\0' != *s){
+        if('.' == *s){
+            ++s;
+            break;
+        }
+        ++s;
+    }
+    return strcmp(s, ext);
+}
+
+int filter(const struct dirent* dir)
+{
+    if(DT_REG != dir->d_type){
+        return 0;
+    }
+    return 0 == ext(dir->d_name, "json")? 1 : 0;
+}
+#endif
+
 void gather(std::vector<Test>& result, const char* directory)
 {
+#ifdef _WIN32
     std::string path = directory;
     path += "*.json";
     WIN32_FIND_DATA findFileData;
@@ -56,6 +81,24 @@ void gather(std::vector<Test>& result, const char* directory)
         result.push_back(test);
     }
     FindClose(handle);
+#else
+    struct dirent** namelist = nullptr;
+    int n = scandir(directory, &namelist, filter, alphasort);
+    for(int i=0; i<n; ++i){
+        Test test;
+        test.path_ = namelist[i]->d_name;
+        if(start_with(test.path_, 'i')) {
+            test.type_ = Test::JsonType::Undefined;
+        } else if(start_with(test.path_, 'y')) {
+            test.type_ = Test::JsonType::Accept;
+        } else if(start_with(test.path_, 'n')) {
+            test.type_ = Test::JsonType::Reject;
+        }
+        result.push_back(test);
+        free(namelist[i]);
+    }
+    free(namelist);
+#endif
 }
 
 struct Data
@@ -102,20 +145,22 @@ void test(const std::vector<Test>& tests, const char* directory)
         switch(test.type_) {
         case Test::JsonType::Accept:
             if(!result) {
-                assert(false);
+                abort();
             }
             break;
         case Test::JsonType::Reject:
             if(result) {
-                assert(false);
+                abort();
             }
             break;
         case Test::JsonType::Undefined:
+#ifdef _DEBUG
             if(result) {
                 std::cout << "accept" << std::endl;
             } else {
                 std::cout << "reject" << std::endl;
             }
+#endif
             break;
         }
         ::free(data.data_);

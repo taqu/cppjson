@@ -531,40 +531,6 @@ bool JsonObjectProxy::getAsBoolean(u32 length, const char* key, bool defaultValu
     return value.asBool();
 }
 
-namespace
-{
-    bool getFloatArray(u32 size, f32* values, const JsonObjectProxy& object, u32 length, const char* key)
-    {
-        u32 index = object.existsKey(length, key);
-        if(Invalid == index) {
-            return false;
-        }
-        index = (*object.parent_)[index].key_value_.value_;
-        if(Invalid == index) {
-            return false;
-        }
-
-        JsonType type = (*object.parent_)[index].type_;
-        if(JsonType::Array != type || size != (*object.parent_)[index].length_) {
-            return false;
-        }
-        u32 count = 0;
-        u32 child = (*object.parent_)[index].array_.head_;
-        while(Invalid != child) {
-            JsonValueProxy value = {object.parent_, child};
-            if(JsonType::Number != value.type() && JsonType::Integer != value.type()) {
-                return false;
-            }
-            values[count] = value.asFloat();
-            ++count;
-            if(size <= count) {
-                break;
-            }
-        }
-        return true;
-    }
-} // namespace
-
 //--- JsonArrayIterator
 bool JsonArrayIterator::next()
 {
@@ -742,7 +708,7 @@ JsonValueProxy JsonParser::getRoot() const
     return {this, 0};
 }
 
-const JsonValue& JsonParser::operator[](u32 index) const
+JsonValue JsonParser::operator[](u32 index) const
 {
     CPPJSON_ASSERT(index < size());
     return buffer_[index];
