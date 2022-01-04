@@ -505,7 +505,7 @@ f32 JsonObjectProxy::getAsFloat(u32 length, const char* key, f32 defaultValue) c
         return defaultValue;
     }
     JsonType type = (*parent_)[index].type_;
-    if(JsonType::Integer != type || JsonType::Number != type) {
+    if(JsonType::Integer != type && JsonType::Number != type) {
         return defaultValue;
     }
     JsonValueProxy value = {parent_, index};
