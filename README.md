@@ -1,17 +1,26 @@
 # Introduction
 [![Build Status](https://travis-ci.org/taqu/cppjson.svg?branch=master)](https://travis-ci.org/taqu/cppjson)
 
-A json parser with least memory allocations, never convert a json tree into other specific structures like STL.
-
-## Concept
+A simple json parser.
 
 # Usage
-# Limitations
-The size of parsed files is limited by 4 GiB. The number of elements is limited by 4 giga.
+To create the implementation, put '#define CPPJSON_IMPLEMENTATION' before including "cppjson.h".  
+Make a class which is derived from cppjson::JSONEventHandler, and pass that to cppjson::JSONReader.  
+```cpp
+#define CPPJSON_IMPLEMENTATION
+#include "cppjson.h"
 
-# Tests
-cppjson will pass tests of [JSON Parsing Test Suite](https://github.com/nst/JSONTestSuite)'s test_parsing. About tests of undefined behaviors, cppjson won't pass almost all of tests which are related with character enconfing matters.
+int main(int argc, char** argv)
+{
+    FILE* file = cppjson::fopen_s(data, "rb");
+    if(NULL == file){
+        return;
+    }
+    fclose(file);
+    return 0;
+}
+```
 
 # License
-This software is distributed under the MIT license or the public domain, choose whichever you like.
+This software is distributed under two licenses, MIT License or Public Domain, choose whichever you like.
 
