@@ -98,11 +98,146 @@ void test(const std::vector<File>& files)
 	}
 }
 
+void traverse_object(cppjson::JsonProxy proxy);
+void traverse_array(cppjson::JsonProxy proxy);
+void traverse_keyvalue(cppjson::JsonProxy proxy);
+void traverse_string(cppjson::JsonProxy proxy);
+void traverse_number(cppjson::JsonProxy proxy);
+void traverse_true(cppjson::JsonProxy proxy);
+void traverse_false(cppjson::JsonProxy proxy);
+void traverse_null(cppjson::JsonProxy proxy);
+
+void traverse(cppjson::JsonProxy proxy)
+{
+	using namespace cppjson;
+    switch(proxy.type()) {
+    case JsonType::Object:
+        traverse_object(proxy);
+        break;
+    case JsonType::Array:
+        traverse_array(proxy);
+        break;
+    case JsonType::KeyValue:
+        traverse_keyvalue(proxy);
+        break;
+    case JsonType::String:
+        traverse_string(proxy);
+        break;
+    case JsonType::Number:
+        traverse_number(proxy);
+        break;
+    case JsonType::True:
+        traverse_true(proxy);
+        break;
+    case JsonType::False:
+        traverse_false(proxy);
+        break;
+    case JsonType::Null:
+        traverse_null(proxy);
+        break;
+	}
+}
+
+void traverse_object(cppjson::JsonProxy proxy)
+{
+    using namespace cppjson;
+    printf("{");
+	for (JsonProxy i = proxy.begin(); i; i = i.next()) {
+        JsonType type = i.type();
+        char key[128];
+        i.key().getString(key);
+        printf("%s: ", key);
+        traverse(i.value());
+        printf(",\n");
+	}
+    printf("}");
+}
+
+void traverse_array(cppjson::JsonProxy proxy)
+{
+    using namespace cppjson;
+    printf("[");
+    for(JsonProxy i = proxy.begin(); i; i = i.next()) {
+        traverse(i);
+        printf(",");
+    }
+    printf("]");
+}
+
+void traverse_keyvalue(cppjson::JsonProxy proxy)
+{
+    char key[128];
+    proxy.key().getString(key);
+    printf("%s: ", key);
+    traverse(proxy.value());
+}
+
+void traverse_string(cppjson::JsonProxy proxy)
+{
+    char value[128];
+    proxy.getString(value);
+    printf("%s", value);
+}
+
+void traverse_number(cppjson::JsonProxy proxy)
+{
+    char value[64];
+    proxy.getString(value);
+    printf("%s", value);
+}
+
+void traverse_true(cppjson::JsonProxy proxy)
+{
+    char value[16];
+    proxy.getString(value);
+    printf("%s", value);
+}
+
+void traverse_false(cppjson::JsonProxy proxy)
+{
+    char value[16];
+    proxy.getString(value);
+    printf("%s", value);
+}
+
+void traverse_null(cppjson::JsonProxy proxy)
+{
+    char value[16];
+    proxy.getString(value);
+    printf("%s", value);
+}
+
+void test(const char* path)
+{
+    FILE* f = fopen(path, "rb");
+    if(NULL == f) {
+        return;
+    }
+    struct stat s;
+    fstat(fileno(f), &s);
+    size_t size = s.st_size;
+    char* data = (char*)::malloc(size);
+    if(fread(data, size, 1, f) <= 0) {
+        fclose(f);
+        ::free(data);
+        return;
+    }
+    fclose(f);
+    cppjson::JsonReader reader;
+    bool result = reader.parse(data, data + size);
+    assert(result);
+    cppjson::JsonProxy proxy = reader.root();
+    traverse(proxy);
+    ::free(data);
+}
+
 int main(void)
 {
 	std::vector<File> files;
 	gather(files, "../JSONTestSuite/test_parsing/", "*.json");
 	test(files);
+	
+	test("../test00.json");
 	return 0;
 }
 

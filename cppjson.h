@@ -129,6 +129,10 @@ struct JsonProxy
     JsonProxy begin() const;
     JsonProxy next() const;
     JsonProxy find(const char* key) const;
+    JsonProxy key() const;
+    JsonProxy value() const;
+
+    uint64_t getString(char* str) const;
 
     uint64_t value_;
     const char* data_;
@@ -255,6 +259,31 @@ JsonProxy JsonProxy::find(const char* key) const
         v = values_[v].next_;
     }
     return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+}
+
+JsonProxy JsonProxy::key() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(JsonType::KeyValue != type()) {
+        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+    }
+    return {values_[value_].start_, data_, values_};
+}
+
+JsonProxy JsonProxy::value() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(JsonType::KeyValue != type()) {
+        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+    }
+    return {values_[value_].size_, data_, values_};
+}
+
+uint64_t JsonProxy::getString(char* str) const
+{
+    ::memcpy(str, data_ + values_[value_].start_, values_[value_].size_);
+    str[values_[value_].size_] = '\0';
+    return values_[value_].size_;
 }
 
 JsonReader::JsonReader(int32_t max_nesting, CPPJSON_MALLOC_TYPE alloc, CPPJSON_FREE_TYPE dealloc)
@@ -401,6 +430,7 @@ const char* JsonReader::parse_element(const char* str)
 
 std::tuple<const char*, uint32_t> JsonReader::parse_value(const char* str)
 {
+    const char* begin = str;
     const char* next = CPPJSON_NULL;
     JsonType type;
     switch(str[0]) {
@@ -461,8 +491,8 @@ std::tuple<const char*, uint32_t> JsonReader::parse_value(const char* str)
     }
 
     uint32_t value = add();
-    values_[value].start_ = reinterpret_cast<uint64_t>(str);
-    values_[value].size_ = reinterpret_cast<uint64_t>(next) - values_[value].start_;
+    values_[value].start_ = reinterpret_cast<uint64_t>(begin) - reinterpret_cast<uint64_t>(begin_);
+    values_[value].size_ = reinterpret_cast<uint64_t>(next) - reinterpret_cast<uint64_t>(begin);
     values_[value].next_ = Invalid;
     values_[value].type_ = static_cast<uint32_t>(type);
     return {next, value};
@@ -472,14 +502,15 @@ std::tuple<const char*, uint32_t> JsonReader::parse_string(const char* str)
 {
     CPPJSON_ASSERT('"' == str[0]);
     ++str;
+    const char* begin = str;
     uint32_t value = add();
-    values_[value].start_ = reinterpret_cast<uint64_t>(str);
+    values_[value].start_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin_);
     values_[value].next_ = Invalid;
     values_[value].type_ = static_cast<uint32_t>(JsonType::String);
     while(str < end_) {
         switch(str[0]) {
         case '"':
-            values_[value].size_ = reinterpret_cast<uint64_t>(str) - values_[value].start_;
+            values_[value].size_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin);
             return {str + 1, value};
         case '\\': {
             const char* next = str + 1;
