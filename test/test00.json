@@ -1,11 +1,15 @@
 {
-    "array0": [
-        [0,1],
-        { "array1": [0,1] }
-    ],
-    "object0": {
-        "object1": {
-            "array2": [0,1]
-        }
-    }
+  "array0": [
+    { "sa2": [0] },
+    { "sa1": [0.1] }
+  ],
+  "array1": [
+    [true],
+    [false],
+    {
+      "object0": {},
+      "object1": {}
+    },
+    null
+  ]
 }

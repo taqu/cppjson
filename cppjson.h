@@ -59,26 +59,15 @@ USAGE:
 
 */
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+
 #include <tuple>
 
 namespace cppjson
 {
 #ifndef CPPJSON_TYPES
 #    define CPPJSON_TYPES
-typedef int8_t s8;
-typedef int16_t s16;
-typedef int32_t s32;
-typedef int64_t s64;
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef float f32;
-typedef double f64;
-
 #    ifndef CPPJSON_NULL
 #        define CPPJSON_NULL nullptr
 #    endif // CPPJSON_NULL
@@ -92,21 +81,15 @@ typedef void (*CPPJSON_FREE_TYPE)(void*);
 #    define CPPJSON_ASSERT(exp) assert(exp)
 #endif // CPPJSON_ASSERT
 
-template<class T>
-inline void swap(T& l, T& r)
-{
-    T tmp(std::move(l));
-    l = std::move(r);
-    r = std::move(tmp);
-}
-
 enum class JsonType
 {
     Object = 0,
     Array,
     KeyValue,
+    ArrayValue,
     String,
     Number,
+    Integer,
     True,
     False,
     Null,
@@ -133,6 +116,8 @@ struct JsonProxy
     JsonProxy value() const;
 
     uint64_t getString(char* str) const;
+    int64_t getInt64() const;
+    double getFloat64() const;
 
     uint64_t value_;
     const char* data_;
@@ -147,7 +132,7 @@ public:
     static constexpr uint32_t Expand = 128;
     static constexpr int32_t MaxNesting = 128;
 
-    JsonReader(int32_t max_nesting = MaxNesting, CPPJSON_MALLOC_TYPE alloc = ::malloc, CPPJSON_FREE_TYPE dealloc = ::free);
+    JsonReader(int32_t max_nesting = MaxNesting, CPPJSON_MALLOC_TYPE alloc = CPPJSON_NULL, CPPJSON_FREE_TYPE dealloc = CPPJSON_NULL);
     ~JsonReader();
 
     bool parse(const char* begin, const char* end);
@@ -166,14 +151,15 @@ private:
     std::tuple<const char*, uint32_t> parse_value(const char* str);
     std::tuple<const char*, uint32_t> parse_string(const char* str);
     const char* parse_4hex(const char* str);
-    const char* parse_zero_number(const char* str);
-    const char* parse_number(const char* str);
+    const char* parse_zero_number(JsonType& type, const char* str);
+    const char* parse_number(JsonType& type, const char* str);
     const char* parse_fraction(const char* str);
     const char* parse_exponent(const char* str);
     const char* parse_digits(const char* str);
     std::tuple<const char*, uint32_t> parse_object(const char* str);
     std::tuple<const char*, uint32_t> parse_member(const char* str);
     std::tuple<const char*, uint32_t> parse_array(const char* str);
+    std::tuple<const char*, uint32_t> parse_array_value(const char* str);
     const char* parse_true(const char* str);
     const char* parse_false(const char* str);
     const char* parse_null(const char* str);
@@ -194,6 +180,9 @@ private:
 #endif // INC_CPPJSON_H_
 
 #ifdef CPPJSON_IMPLEMENTATION
+#include <charconv>
+#include <cstdlib>
+#include <cstring>
 
 namespace cppjson
 {
@@ -220,7 +209,7 @@ uint64_t JsonProxy::size() const
 JsonProxy JsonProxy::begin() const
 {
     CPPJSON_ASSERT(JsonReader::Invalid != value_);
-    if (static_cast<uint32_t>(JsonType::Object) != values_[value_].type_
+    if(static_cast<uint32_t>(JsonType::Object) != values_[value_].type_
        && static_cast<uint32_t>(JsonType::Array) != values_[value_].type_) {
         return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
     }
@@ -237,14 +226,14 @@ JsonProxy JsonProxy::find(const char* key) const
 {
     CPPJSON_ASSERT(CPPJSON_NULL != key);
     CPPJSON_ASSERT(JsonReader::Invalid != value_);
-    if (JsonType::Object != type()) {
+    if(JsonType::Object != type()) {
         return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
     }
     uint64_t v = values_[value_].start_;
-    while (JsonReader::Invalid != v) {
+    while(JsonReader::Invalid != v) {
         // Must be keyvalue
-        if (static_cast<uint32_t>(JsonType::KeyValue) != values_[v].type_) {
-            return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL}; 
+        if(static_cast<uint32_t>(JsonType::KeyValue) != values_[v].type_) {
+            return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
         }
         const JsonValue& k = values_[v];
         // Key must be string
@@ -253,7 +242,7 @@ JsonProxy JsonProxy::find(const char* key) const
         }
         // Check the key string
         const char* str = &data_[k.start_];
-        if (0 == ::strncmp(str, key, k.size_)) {
+        if(0 == ::strncmp(str, key, k.size_)) {
             return {v, data_, values_};
         }
         v = values_[v].next_;
@@ -273,7 +262,7 @@ JsonProxy JsonProxy::key() const
 JsonProxy JsonProxy::value() const
 {
     CPPJSON_ASSERT(JsonReader::Invalid != value_);
-    if(JsonType::KeyValue != type()) {
+    if(JsonType::KeyValue != type() && JsonType::ArrayValue != type()) {
         return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
     }
     return {values_[value_].size_, data_, values_};
@@ -286,6 +275,32 @@ uint64_t JsonProxy::getString(char* str) const
     return values_[value_].size_;
 }
 
+int64_t JsonProxy::getInt64() const
+{
+    const char* first = data_ + values_[value_].start_;
+    const char* last = first + values_[value_].size_;
+    int64_t value = 0;
+    std::from_chars(first, last, value);
+    return value;
+}
+
+double JsonProxy::getFloat64() const
+{
+    const char* first = data_ + values_[value_].start_;
+#if _MSC_VER
+    const char* last = first + values_[value_].size_;
+    double value = 0;
+    std::from_chars(first, last, value);
+#else
+    char buffer[63];
+    uint64_t size = values_[value_].size_ < 64ULL ? values_[value_].size_ : 63ULL;
+    ::memcpy(buffer, first, size);
+    buffer[size] = '\0';
+    double value = strtod(buffer, CPPJSON_NULL);
+#endif
+    return value;
+}
+
 JsonReader::JsonReader(int32_t max_nesting, CPPJSON_MALLOC_TYPE alloc, CPPJSON_FREE_TYPE dealloc)
     : alloc_(alloc)
     , dealloc_(dealloc)
@@ -296,6 +311,10 @@ JsonReader::JsonReader(int32_t max_nesting, CPPJSON_MALLOC_TYPE alloc, CPPJSON_F
     , values_(CPPJSON_NULL)
 {
     CPPJSON_ASSERT(0 < max_nesting_);
+    if(CPPJSON_NULL == alloc_ || CPPJSON_NULL == dealloc_) {
+        alloc_ = ::malloc;
+        dealloc_ = ::free;
+    }
     CPPJSON_ASSERT(CPPJSON_NULL != alloc_);
     CPPJSON_ASSERT(CPPJSON_NULL != dealloc_);
 }
@@ -317,7 +336,7 @@ bool JsonReader::parse(const char* begin, const char* end)
 
     const char* str = parse_element(begin_);
     if(CPPJSON_NULL == str) {
-        return CPPJSON_NULL;
+        return false;
     }
     str = whitespace(str);
     return end_ <= str;
@@ -441,19 +460,17 @@ std::tuple<const char*, uint32_t> JsonReader::parse_value(const char* str)
         if(end_ <= str || str[0] < '0' || '9' < str[0]) {
             return InvalidPair;
         }
-        type = JsonType::Number;
         switch(str[0]) {
         case '0': {
-            next = parse_zero_number(str);
+            next = parse_zero_number(type, str);
         } break;
         default:
-            next = parse_number(str);
+            next = parse_number(type, str);
             break;
         }
     } break;
     case '0':
-        type = JsonType::Number;
-        next = parse_zero_number(str);
+        next = parse_zero_number(type, str);
         break;
     case '1':
     case '2':
@@ -464,8 +481,7 @@ std::tuple<const char*, uint32_t> JsonReader::parse_value(const char* str)
     case '7':
     case '8':
     case '9':
-        type = JsonType::Number;
-        next = parse_number(str);
+        next = parse_number(type, str);
         break;
     case '{':
         return parse_object(str);
@@ -590,7 +606,7 @@ const char* JsonReader::parse_4hex(const char* str)
     return CPPJSON_NULL;
 }
 
-const char* JsonReader::parse_zero_number(const char* str)
+const char* JsonReader::parse_zero_number(JsonType& type, const char* str)
 {
     CPPJSON_ASSERT('0' == str[0]);
     ++str;
@@ -610,16 +626,19 @@ const char* JsonReader::parse_zero_number(const char* str)
     case '9':
         return CPPJSON_NULL;
     case '.':
+        type = JsonType::Number;
         return parse_fraction(str);
     case 'e':
     case 'E':
+        type = JsonType::Number;
         return parse_exponent(str);
     default:
+        type = JsonType::Integer;
         return str;
     }
 }
 
-const char* JsonReader::parse_number(const char* str)
+const char* JsonReader::parse_number(JsonType& type, const char* str)
 {
     CPPJSON_ASSERT('1' <= str[0] && str[0] <= '9');
     ++str;
@@ -638,14 +657,18 @@ const char* JsonReader::parse_number(const char* str)
             ++str;
             break;
         case '.':
+            type = JsonType::Number;
             return parse_fraction(str);
         case 'e':
         case 'E':
+            type = JsonType::Number;
             return parse_exponent(str);
         default:
+            type = JsonType::Integer;
             return str;
         }
     }
+    type = JsonType::Integer;
     return str;
 }
 
@@ -713,13 +736,13 @@ std::tuple<const char*, uint32_t> JsonReader::parse_object(const char* str)
         return InvalidPair;
     }
     uint32_t object = add();
-    values_[object].start_ = reinterpret_cast<uint64_t>(str);
+    values_[object].start_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin_);
     values_[object].size_ = 0;
     values_[object].next_ = Invalid;
     values_[object].type_ = static_cast<uint32_t>(JsonType::Object);
 
     ++str;
-    bool needs_member = true;
+    bool needs_member = false;
     bool needs_comma = false;
     while(str < end_) {
         str = whitespace(str);
@@ -801,7 +824,7 @@ std::tuple<const char*, uint32_t> JsonReader::parse_array(const char* str)
     values_[object].next_ = Invalid;
     values_[object].type_ = static_cast<uint32_t>(JsonType::Array);
     ++str;
-    bool needs_value = true;
+    bool needs_value = false;
     bool needs_comma = false;
     while(str < end_) {
         str = whitespace(str);
@@ -828,7 +851,7 @@ std::tuple<const char*, uint32_t> JsonReader::parse_array(const char* str)
             if(needs_comma) {
                 return InvalidPair;
             }
-            auto [n, v] = parse_value(str);
+            auto [n, v] = parse_array_value(str);
             str = n;
             if(CPPJSON_NULL == str) {
                 return InvalidPair;
@@ -840,6 +863,23 @@ std::tuple<const char*, uint32_t> JsonReader::parse_array(const char* str)
         }
     }
     return InvalidPair;
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_array_value(const char* str)
+{
+    uint32_t arrayvalue = add();
+    values_[arrayvalue].start_ = Invalid;
+    values_[arrayvalue].size_ = Invalid;
+    values_[arrayvalue].next_ = Invalid;
+    values_[arrayvalue].type_ = static_cast<uint32_t>(JsonType::ArrayValue);
+
+    auto [n0, v0] = parse_value(str);
+    str = n0;
+    if(CPPJSON_NULL == str) {
+        return InvalidPair;
+    }
+    values_[arrayvalue].size_ = v0;
+    return {n0, arrayvalue};
 }
 
 const char* JsonReader::parse_true(const char* str)
