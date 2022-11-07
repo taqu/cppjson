@@ -240,11 +240,11 @@ private:
     const char* begin_; //!< begin of document
     const char* end_; //!< end of document
     int32_t max_nesting_; //!< the maximum of nesting
-    int32_t nesting_;
+    int32_t nesting_; //!< current nesting
 
-    uint32_t capacity_;
-    uint32_t size_;
-    JsonValue* values_;
+    uint32_t capacity_; //!< capacity of buffer
+    uint32_t size_; //!< current size of buffer
+    JsonValue* values_; //!< elements of Json
 };
 } // namespace cppjson
 
@@ -335,8 +335,8 @@ double JsonProxy::getFloat64() const
     double value = 0;
     std::from_chars(first, last, value);
 #else
-    char buffer[63];
-    uint64_t size = values_[value_].size_ < 64ULL ? values_[value_].size_ : 63ULL;
+    char buffer[127];
+    uint64_t size = values_[value_].size_ < 128ULL ? values_[value_].size_ : 127ULL;
     ::memcpy(buffer, first, size);
     buffer[size] = '\0';
     double value = strtod(buffer, CPPJSON_NULL);
