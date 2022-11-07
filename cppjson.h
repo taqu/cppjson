@@ -81,6 +81,9 @@ typedef void (*CPPJSON_FREE_TYPE)(void*);
 #    define CPPJSON_ASSERT(exp) assert(exp)
 #endif // CPPJSON_ASSERT
 
+/**
+ * @brief types
+ */
 enum class JsonType
 {
     Object = 0,
@@ -96,27 +99,79 @@ enum class JsonType
     Invalid,
 };
 
+/**
+ * @brief value type
+ */
 struct JsonValue
 {
-    uint64_t start_;
-    uint64_t size_;
-    uint32_t next_;
-    uint32_t type_;
+    uint64_t start_; //!< the start position of element
+    uint64_t size_; //!< the size of element
+    uint32_t next_; //!< the next element of aggretations
+    uint32_t type_; //!< the type of element
 };
 
+/**
+ * @brief Json element
+ */
 struct JsonProxy
 {
+    /**
+     * @brief validate this element
+     * @return true if this is valid
+     */
     operator bool() const;
+
+    /**
+     * @return type of this
+     */
     JsonType type() const;
+
+    /**
+     * Indicates the size of element. In a case of the string type, it shows the length of the string. For excample "test", the size equals to 4, excepts characters `"`.
+     * @return size of this
+     */
     uint64_t size() const;
+
+    /**
+     * In typical usage, you can iterate children,
+     *
+     * ```cpp
+     * for(JsonProxy i=aggregation.begin(); i; i=i.next())
+     * ```
+     * @return the first element of aggrigations, like the object or array
+     */
     JsonProxy begin() const;
+
+    /**
+     * @return the next element of aggrations
+     */
     JsonProxy next() const;
-    JsonProxy find(const char* key) const;
+
+    /**
+     * @return key of an object's entry
+     */
     JsonProxy key() const;
+    /**
+     * @return value of an object's entry
+     */
     JsonProxy value() const;
 
+    /**
+     * @brief Get the value as string
+     * @param [out] str ... the result
+     * @return size of the result
+     */
     uint64_t getString(char* str) const;
+
+    /**
+     * @brief Get the value as integer
+     * @return the value as integer
+     */
     int64_t getInt64() const;
+    /**
+     * @brief Get the value as float
+     * @return the value as float
+     */
     double getFloat64() const;
 
     uint64_t value_;
@@ -124,20 +179,36 @@ struct JsonProxy
     const JsonValue* values_;
 };
 
+/**
+ * @brief parser of a Json document
+ */
 class JsonReader
 {
 public:
-    static constexpr uint32_t Invalid = static_cast<uint32_t>(-1);
-    static constexpr std::tuple<const char*, uint32_t> InvalidPair = {CPPJSON_NULL, Invalid};
-    static constexpr uint32_t Expand = 128;
-    static constexpr int32_t MaxNesting = 128;
+    static constexpr uint32_t Invalid = static_cast<uint32_t>(-1); //!< Invalid value as uint32_t
+    static constexpr std::tuple<const char*, uint32_t> InvalidPair = {CPPJSON_NULL, Invalid}; //!< Invalid value of the pair of next and value
+    static constexpr uint32_t Expand = 128; //!< the expansion of buffer's capacity
+    static constexpr int32_t MaxNesting = 128; //!< the maximum of nesting for objects or arrays
 
+    /**
+     * @param max_nesting ... the maximum of nesting for objects or arrays
+     * @param alloc ... the function for memory allocation
+     * @param dealloc ... the furnction for memory deallocation
+     * @warning the alloc and dealloc must be passed simultaneously
+     */
     JsonReader(int32_t max_nesting = MaxNesting, CPPJSON_MALLOC_TYPE alloc = CPPJSON_NULL, CPPJSON_FREE_TYPE dealloc = CPPJSON_NULL);
     ~JsonReader();
 
+    /**
+     * @param begin
+     * @param end
+     * @return
+     * @pre begin != null
+     * @pre end != null
+     * @pre begin<=end
+     */
     bool parse(const char* begin, const char* end);
     JsonProxy root() const;
-
 private:
     JsonReader(const JsonReader&) = delete;
     JsonReader& operator=(const JsonReader&) = delete;
@@ -164,11 +235,11 @@ private:
     const char* parse_false(const char* str);
     const char* parse_null(const char* str);
 
-    CPPJSON_MALLOC_TYPE alloc_;
-    CPPJSON_FREE_TYPE dealloc_;
-    const char* begin_;
-    const char* end_;
-    int32_t max_nesting_;
+    CPPJSON_MALLOC_TYPE alloc_; //!< allocator
+    CPPJSON_FREE_TYPE dealloc_; //!< deallocator
+    const char* begin_; //!< begin of document
+    const char* end_; //!< end of document
+    int32_t max_nesting_; //!< the maximum of nesting
     int32_t nesting_;
 
     uint32_t capacity_;
@@ -220,34 +291,6 @@ JsonProxy JsonProxy::next() const
 {
     CPPJSON_ASSERT(JsonReader::Invalid != value_);
     return {values_[value_].next_, data_, values_};
-}
-
-JsonProxy JsonProxy::find(const char* key) const
-{
-    CPPJSON_ASSERT(CPPJSON_NULL != key);
-    CPPJSON_ASSERT(JsonReader::Invalid != value_);
-    if(JsonType::Object != type()) {
-        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
-    }
-    uint64_t v = values_[value_].start_;
-    while(JsonReader::Invalid != v) {
-        // Must be keyvalue
-        if(static_cast<uint32_t>(JsonType::KeyValue) != values_[v].type_) {
-            return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
-        }
-        const JsonValue& k = values_[v];
-        // Key must be string
-        if(static_cast<uint32_t>(JsonType::String) != k.type_) {
-            return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
-        }
-        // Check the key string
-        const char* str = &data_[k.start_];
-        if(0 == ::strncmp(str, key, k.size_)) {
-            return {v, data_, values_};
-        }
-        v = values_[v].next_;
-    }
-    return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
 }
 
 JsonProxy JsonProxy::key() const
