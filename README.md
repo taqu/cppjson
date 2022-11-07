@@ -169,7 +169,7 @@ void test(const char* path)
 int main(void)
 {
     test("../test00.json");
-	return 0;
+    return 0;
 }
 ```
 
