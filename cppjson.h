@@ -1,6 +1,31 @@
 #ifndef INC_CPPJSON_H_
 #define INC_CPPJSON_H_
 /*
+﻿# License
+This software is distributed under two licenses, choose whichever you like.
+
+## MIT License
+Copyright (c) 2022 Takuro Sakai
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+## Public Domain
 This is free and unencumbered software released into the public domain.
 
 Anyone is free to copy, modify, publish, use, compile, sell, or
@@ -34,1625 +59,907 @@ USAGE:
 
 */
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
-#include <utility>
+
+#include <tuple>
 
 namespace cppjson
 {
 #ifndef CPPJSON_TYPES
-#define CPPJSON_TYPES
-    typedef int8_t s8;
-    typedef int16_t s16;
-    typedef int32_t s32;
-    typedef int64_t s64;
+#    define CPPJSON_TYPES
+#    ifndef CPPJSON_NULL
+#        define CPPJSON_NULL nullptr
+#    endif // CPPJSON_NULL
 
-    typedef uint8_t u8;
-    typedef uint16_t u16;
-    typedef uint32_t u32;
-    typedef uint64_t u64;
+#endif // CPPJSON_TYPES
 
-    typedef float f32;
-    typedef double f64;
-
-    typedef char Char;
-    typedef bool boolean;
-#ifdef _MSC_VER
-    typedef s32 off_t;
-    #ifndef CPPJSON_FSEEK
-    #define CPPJSON_FSEEK(f,p,o) fseek((f),(p),(o))
-    #endif
-
-    #ifndef CPPJSON_FTELL
-    #define CPPJSON_FTELL(f) ftell((f))
-    #endif
-
-#else
-    typedef s32 off_t;
-    #ifndef CPPJSON_FSEEK
-    #define CPPJSON_FSEEK(f,p,o) fseek((f),(p),(o))
-    #endif
-
-    #ifndef CPPJSON_FTELL
-    #define CPPJSON_FTELL(f) ftell((f))
-    #endif
-#endif
-
-#endif
-
-#ifndef CPPJSON_MALLOC
-#define CPPJSON_MALLOC(size) malloc(size)
-#endif
-
-#ifndef CPPJSON_FREE
-#define CPPJSON_FREE(ptr) free(ptr)
-#endif
-
-#ifndef CPPJSON_PLACEMENT_NEW
-#define CPPJSON_PLACEMENT_NEW(ptr) new(ptr)
-#endif
+typedef void* (*CPPJSON_MALLOC_TYPE)(size_t);
+typedef void (*CPPJSON_FREE_TYPE)(void*);
 
 #ifndef CPPJSON_ASSERT
-#define CPPJSON_ASSERT(exp) assert(exp)
-#endif
-
-
-    template<class T>
-    inline void swap(T& l, T& r)
-    {
-        T tmp(std::move(l));
-        l = std::move(r);
-        r = std::move(tmp);
-    }
-
-    FILE* fopen_s(const Char* filename, const Char* mode);
-
-    //--------------------------------------------
-    //---
-    //--- String
-    //---
-    //--------------------------------------------
-    class String
-    {
-    public:
-        static const s32 ExpandSize = 8;
-        static const u32 ExpandMask = ExpandSize-1;
-
-        String();
-        String(String&& rhs);
-        ~String();
-
-        void clear();
-        void resize(s32 length);
-        void reserve(s32 capacity);
-
-        inline s32 capacity() const;
-        inline s32 length() const;
-        inline Char* c_str();
-        inline const Char* c_str() const;
-        inline const Char& operator[](s32 index) const;
-        inline Char& operator[](s32 index);
-
-        String& operator=(String&& rhs);
-        String& operator=(const Char* str);
-        inline void assign(const Char* str);
-        void assign(s32 length, const Char* str);
-
-        boolean operator==(const String& rhs) const;
-
-        friend boolean operator==(const String& lhs, const Char* rhs);
-        friend boolean operator==(const Char* lhs, const String& rhs);
-    private:
-        static inline s32 getCapacity(s32 capacity)
-        {
-            return (capacity+ExpandMask) & ~ExpandMask;
-        }
-
-        inline const Char* getBuffer() const
-        {
-            return (capacity_<=ExpandSize)? buffer_.small_ : buffer_.elements_;
-        }
-        inline Char* getBuffer()
-        {
-            return (capacity_<=ExpandSize)? buffer_.small_ : buffer_.elements_;
-        }
-
-
-        void initBuffer(s32 length);
-        void createBuffer(s32 length);
-        void expandBuffer(s32 length);
-
-        s32 capacity_;
-        s32 length_;
-
-        union Buffer
-        {
-            Char small_[ExpandSize];
-            Char* elements_;
-        };
-        Buffer buffer_;
-    };
-
-    inline s32 String::capacity() const
-    {
-        return capacity_;
-    }
-
-    inline s32 String::length() const
-    {
-        return length_;
-    }
-
-    inline Char* String::c_str()
-    {
-        return (ExpandSize<capacity_)? buffer_.elements_ : buffer_.small_;
-    }
-
-    inline const Char* String::c_str() const
-    {
-        return (ExpandSize<capacity_)? buffer_.elements_ : buffer_.small_;
-    }
-
-    inline const Char& String::operator[](s32 index) const
-    {
-        CPPJSON_ASSERT(0<=index && index<length_);
-        return getBuffer()[index];
-    }
-
-    inline Char& String::operator[](s32 index)
-    {
-        CPPJSON_ASSERT(0<=index && index<length_);
-        return getBuffer()[index];
-    }
-
-    inline void String::assign(const Char* str)
-    {
-        assign(static_cast<s32>(::strlen(str)), str);
-    }
-
-    inline s32 compare(const String& lhs, const String& rhs)
-    {
-        return ::strcmp(lhs.c_str(), rhs.c_str());
-    }
-
-    inline s32 compare(const String& lhs, const Char* rhs)
-    {
-        CPPJSON_ASSERT(NULL != rhs);
-        return ::strcmp(lhs.c_str(), rhs);
-    }
-
-    inline s32 compare(const Char* lhs, const String& rhs)
-    {
-        CPPJSON_ASSERT(NULL != lhs);
-        return ::strcmp(lhs, rhs.c_str());
-    }
-
-    //--------------------------------------------
-    //---
-    //--- Array
-    //---
-    //--------------------------------------------
-    template<class T>
-    class Array
-    {
-    public:
-        typedef Array<T> this_type;
-        typedef s32 size_type;
-        typedef T* iterator;
-        typedef const T* const_iterator;
-
-        Array();
-        Array(this_type&& rhs);
-        explicit Array(s32 capacity);
-        ~Array();
-
-        inline s32 size() const;
-        inline s32 capacity() const;
-
-        inline T& operator[](s32 index);
-        inline const T& operator[](s32 index) const;
-        inline T& front();
-        inline const T& front() const;
-        inline T& back();
-        inline const T& back() const;
-
-        void push_back(const T& t);
-        void push_back(T&& t);
-        void pop_back();
-
-        void clear();
-        void reserve(s32 capacity);
-        void resize(s32 size);
-        void removeAt(s32 index);
-        void swap(this_type& rhs);
-
-        this_type& operator=(this_type&& rhs);
-    private:
-        Array(const this_type&) = delete;
-        this_type& operator=(const this_type&) = delete;
-
-        s32 capacity_;
-        s32 size_;
-        T *items_;
-    };
-
-    template<class T>
-    Array<T>::Array()
-        :capacity_(0)
-        ,size_(0)
-        ,items_(NULL)
-    {
-    }
-
-    template<class T>
-    Array<T>::Array(this_type&& rhs)
-        :capacity_(rhs.capacity_)
-        ,size_(rhs.size_)
-        ,items_(rhs.items_)
-    {
-        rhs.capacity_ = 0;
-        rhs.size_ = 0;
-        rhs.items_ = NULL;
-    }
-
-    template<class T>
-    Array<T>::Array(s32 capacity)
-        :capacity_(capacity)
-        ,size_(0)
-        ,items_(NULL)
-    {
-        CPPJSON_ASSERT(0<=capacity_);
-        items_ = (T*)CPPJSON_MALLOC(sizeof(T)*capacity_);
-    }
-
-    template<class T>
-    Array<T>::~Array()
-    {
-        for(s32 i=0; i<size_; ++i){
-            items_[i].~T();
-        }
-        CPPJSON_FREE(items_);
-        items_ = NULL;
-    }
-
-    template<class T>
-    inline s32 Array<T>::size() const
-    {
-        return size_;
-    }
-
-    template<class T>
-    inline s32 Array<T>::capacity() const
-    {
-        return capacity_;
-    }
-
-    template<class T>
-    inline T& Array<T>::operator[](s32 index)
-    {
-        CPPJSON_ASSERT(0<=index && index<size_);
-        return items_[index];
-    }
-
-    template<class T>
-    inline const T& Array<T>::operator[](s32 index) const
-    {
-        CPPJSON_ASSERT(0<=index && index<size_);
-        return items_[index];
-    }
-
-    template<class T>
-    inline T& Array<T>::front()
-    {
-        CPPJSON_ASSERT(0<size_);
-        return items_[0];
-    }
-
-    template<class T>
-    inline const T& Array<T>::front() const
-    {
-        CPPJSON_ASSERT(0<size_);
-        return items_[0];
-    }
-
-    template<class T>
-    inline T& Array<T>::back()
-    {
-        CPPJSON_ASSERT(0<size_);
-        return items_[size_-1];
-    }
-
-    template<class T>
-    inline const T& Array<T>::back() const
-    {
-        CPPJSON_ASSERT(0<size_);
-        return items_[size_-1];
-    }
-
-
-    template<class T>
-    void Array<T>::push_back(const T& t)
-    {
-        if(capacity_<=size_){
-            reserve(capacity_+16);
-        }
-        CPPJSON_PLACEMENT_NEW(&items_[size_]) T(t);
-        ++size_;
-    }
-
-
-    template<class T>
-    void Array<T>::push_back(T&& t)
-    {
-        if(capacity_<=size_){
-            reserve(capacity_+16);
-        }
-        CPPJSON_PLACEMENT_NEW(&items_[size_]) T(t);
-        ++size_;
-    }
-
-    template<class T>
-    void Array<T>::pop_back()
-    {
-        CPPJSON_ASSERT(0<size_);
-        --size_;
-        items_[size_].~T();
-    }
-
-    template<class T>
-    void Array<T>::clear()
-    {
-        for(s32 i=0; i<size_; ++i){
-            items_[i].~T();
-        }
-        size_ = 0;
-    }
-
-    template<class T>
-    void Array<T>::reserve(s32 capacity)
-    {
-        if(capacity<=capacity_){
-            return;
-        }
-
-        //allocate new buffer
-        T *newItems = (T*)CPPJSON_MALLOC(capacity*sizeof(T));
-
-        //copy construct
-        for(s32 i=0; i<size_; ++i){
-            CPPJSON_PLACEMENT_NEW(&newItems[i]) T(std::move(items_[i]));
-            items_[i].~T();
-        }
-        //deallocate old buffer
-        CPPJSON_FREE(items_);
-        items_ = newItems;
-        capacity_ = capacity;
-    }
-
-    template<class T>
-    void Array<T>::resize(s32 size)
-    {
-        if(size < size_){
-            for(s32 i=size; i<size_; ++i){
-                items_[i].~T();
-            }
-
-        }else{
-            reserve(size);
-            for(s32 i=size_; i<size; ++i){
-                CPPJSON_PLACEMENT_NEW(&items_[i]) T;
-            }
-        }
-        size_ = size;
-    }
-
-    template<class T>
-    void Array<T>::removeAt(s32 index)
-    {
-        CPPJSON_ASSERT(0<=index && index<size_);
-        for(s32 i=index+1; i<size_; ++i){
-            items_[i-1] = std::move(items_[i]);
-        }
-        --size_;
-        items_[size_].~T();
-    }
-
-    template<class T>
-    void Array<T>::swap(this_type& rhs)
-    {
-        swap(capacity_, rhs.capacity_);
-        swap(size_, rhs.size_);
-        swap(items_, rhs.items_);
-    }
-
-    template<class T>
-    typename Array<T>::this_type& Array<T>::operator=(this_type&& rhs)
-    {
-        if(this == &rhs){
-            return;
-        }
-        capacity_ = rhs.capacity_;
-        size_ = rhs.size_;
-        items_ = rhs.items_;
-
-        rhs.capacity_ = 0;
-        rhs.size_ = 0;
-        rhs.items_ = NULL;
-    }
-
-    //---------------------------------------------------------------
-    //---
-    //--- IStream
-    //---
-    //---------------------------------------------------------------
-    class IStream
-    {
-    public:
-        /**
-        @return Success: position, Faile: -1
-        */
-        virtual off_t tell() const =0;
-        virtual boolean seek(off_t pos) =0;
-
-        /**
-        @return Success: input c, Fail: EOF
-        */
-        virtual s32 get() =0;
-
-        /**
-        @return Success: input c, Fail: EOF
-        */
-        virtual s32 unget(s32 c) =0;
-        virtual s32 read(u8* dst, off_t size) =0;
-
-        virtual boolean isEOF() const =0;
-    protected:
-        IStream(const IStream&) = delete;
-        IStream& operator=(const IStream&) = delete;
-
-        IStream()
-        {}
-        virtual ~IStream()
-        {}
-    };
-
-    class ISStream : public IStream
-    {
-    public:
-        ISStream();
-        ISStream(ISStream&& rhs);
-        ISStream(off_t length, const s8* str);
-        virtual ~ISStream();
-
-        off_t tell() const override;
-        boolean seek(off_t pos) override;
-        s32 get() override;
-        s32 unget(s32 c) override;
-        s32 read(u8* dst, off_t size) override;
-
-        boolean isEOF() const override;
-
-        ISStream& operator=(ISStream&& rhs);
-    protected:
-        ISStream(const ISStream&) = delete;
-        ISStream& operator=(const ISStream&) = delete;
-
-        off_t pos_;
-        off_t length_;
-        const s8* str_;
-    };
-
-    class IFStream : public IStream
-    {
-    public:
-        IFStream();
-        IFStream(IFStream&& rhs);
-        IFStream(FILE* file);
-        virtual ~IFStream();
-
-        off_t tell() const override;
-        boolean seek(off_t pos) override;
-        s32 get() override;
-        s32 unget(s32 c) override;
-        s32 read(u8* dst, off_t size) override;
-
-        boolean isEOF() const override;
-
-        IFStream& operator=(IFStream&& rhs);
-    protected:
-        IFStream(const IFStream&) = delete;
-        IFStream& operator=(const IFStream&) = delete;
-
-        off_t pos_;
-        FILE* file_;
-    };
-
-
-    //---------------------------------------------------------------
-    enum JSONStatus
-    {
-        JSON_Error = -1,
-        JSON_OK =0,
-    };
-    enum JSONToken
-    {
-        JSONToken_Error = -1,
-        JSONToken_None = 0,
-        JSONToken_OBJStart = '{',
-        JSONToken_OBJEnd = '}',
-        JSONToken_OBJColon = ':',
-        JSONToken_Separator = ',',
-        JSONToken_ArrayStart = '[',
-        JSONToken_ArrayEnd = ']',
-        JSONToken_DQuote = '"',
-        JSONToken_Escape = '\\',
-        JSONToken_Value = 0x80,
-    };
-
-    enum JSON
-    {
-        JSON_Object =1,
-        JSON_Array,
-        JSON_String,
-        JSON_Integer,
-        JSON_Float,
-        JSON_True,
-        JSON_False,
-        JSON_Null,
-    };
-
-    //---------------------------------------------------------------
-    //---
-    //--- Range
-    //---
-    //---------------------------------------------------------------
-    struct Range
-    {
-        off_t start_;
-        off_t length_;
-
-        inline void reset()
-        {
-            start_ = length_ = 0;
-        }
-    };
-
-    //---------------------------------------------------------------
-    //---
-    //--- RangeStream
-    //---
-    //---------------------------------------------------------------
-    class RangeStream
-    {
-    public:
-        RangeStream(IStream* stream, const Range& range);
-        off_t length() const;
-        s32 read(u8* dst);
-        s32 readAsString(Char* str);
-        s32 readAsString(String& str);
-        s32 readAsInt(s32 defaultValue=0);
-        f32 readAsFloat(f32 defaultValue=0.0f);
-    private:
-        IStream* stream_;
-        off_t start_;
-        off_t length_;
-    };
-
-    //---------------------------------------------------------------
-    //---
-    //--- JSONEventHandler
-    //---
-    //---------------------------------------------------------------
-    class JSONEventHandler
-    {
-    public:
-        virtual void begin() =0;
-        virtual void end() =0;
-        virtual void beginObject() =0;
-        virtual void endObject(RangeStream object) =0;
-
-        virtual void beginArray() =0;
-        virtual void endArray(RangeStream stream) =0;
-
-        virtual void root(s32 type, RangeStream value) =0;
-        virtual void value(s32 type, RangeStream v) =0;
-        virtual void keyValue(RangeStream key, s32 type, RangeStream value) =0;
-
-        virtual void onError(s32 line, s32 charCount) =0;
-    protected:
-        JSONEventHandler(const JSONEventHandler&) = delete;
-        JSONEventHandler& operator=(const JSONEventHandler&) = delete;
-
-        JSONEventHandler()
-        {}
-        virtual ~JSONEventHandler()
-        {}
-    };
-
-    //---------------------------------------------------------------
-    //---
-    //--- JSONReader
-    //---
-    //---------------------------------------------------------------
-    class JSONReader
-    {
-    public:
-        static const s32 Flag_ErrorReported = (0x01<<0);
-
-        JSONReader(IStream& istream, JSONEventHandler& handler);
-        ~JSONReader();
-
-        boolean read(s32 flags = 0);
-    private:
-        boolean skipSpace();
-        boolean check(const s8* str);
-        void setStart(Range& range);
-        void setLength(Range& range);
-        s32 onError();
-
-        s32 getObject(Range& object);
-        s32 getArray(Range& array);
-        s32 getValue(Range& value);
-        s32 getString(Range& str);
-        /**
-        @return Success:JSON_Integer of JSON_Float, Fail:JSON_Error
-        */
-        s32 getNumber(Range& number);
-        s32 getDigit(boolean unget=true);
-        boolean isNumber(s32 c) const;
-        boolean isOneToNine(s32 c) const;
-
-        s32 flags_;
-        IStream& istream_;
-        JSONEventHandler& handler_;
-    };
-}
-#endif //INC_CPPJSON_H_
+#    define CPPJSON_ASSERT(exp) assert(exp)
+#endif // CPPJSON_ASSERT
+
+/**
+ * @brief types
+ */
+enum class JsonType
+{
+    Object = 0,
+    Array,
+    KeyValue,
+    ArrayValue,
+    String,
+    Number,
+    Integer,
+    True,
+    False,
+    Null,
+    Invalid,
+};
+
+/**
+ * @brief value type
+ */
+struct JsonValue
+{
+    uint64_t start_; //!< the start position of element
+    uint64_t size_; //!< the size of element
+    uint32_t next_; //!< the next element of aggretations
+    uint32_t type_; //!< the type of element
+};
+
+/**
+ * @brief Json element
+ */
+struct JsonProxy
+{
+    /**
+     * @brief validate this element
+     * @return true if this is valid
+     */
+    operator bool() const;
+
+    /**
+     * @return type of this
+     */
+    JsonType type() const;
+
+    /**
+     * Indicates the size of element. In a case of the string type, it shows the length of the string. For excample "test", the size equals to 4, excepts characters `"`.
+     * @return size of this
+     */
+    uint64_t size() const;
+
+    /**
+     * In typical usage, you can iterate children,
+     *
+     * ```cpp
+     * for(JsonProxy i=aggregation.begin(); i; i=i.next())
+     * ```
+     * @return the first element of aggrigations, like the object or array
+     */
+    JsonProxy begin() const;
+
+    /**
+     * @return the next element of aggrations
+     */
+    JsonProxy next() const;
+
+    /**
+     * @return key of an object's entry
+     */
+    JsonProxy key() const;
+    /**
+     * @return value of an object's entry
+     */
+    JsonProxy value() const;
+
+    /**
+     * @brief Get the value as string
+     * @param [out] str ... the result
+     * @return size of the result
+     */
+    uint64_t getString(char* str) const;
+
+    /**
+     * @brief Get the value as integer
+     * @return the value as integer
+     */
+    int64_t getInt64() const;
+    /**
+     * @brief Get the value as float
+     * @return the value as float
+     */
+    double getFloat64() const;
+
+    uint64_t value_;
+    const char* data_;
+    const JsonValue* values_;
+};
+
+/**
+ * @brief parser of a Json document
+ */
+class JsonReader
+{
+public:
+    static constexpr uint32_t Invalid = static_cast<uint32_t>(-1); //!< Invalid value as uint32_t
+    static constexpr std::tuple<const char*, uint32_t> InvalidPair = {CPPJSON_NULL, Invalid}; //!< Invalid value of the pair of next and value
+    static constexpr uint32_t Expand = 128; //!< the expansion of buffer's capacity
+    static constexpr int32_t MaxNesting = 128; //!< the maximum of nesting for objects or arrays
+
+    /**
+     * @param max_nesting ... the maximum of nesting for objects or arrays
+     * @param alloc ... the function for memory allocation
+     * @param dealloc ... the furnction for memory deallocation
+     * @warning the alloc and dealloc must be passed simultaneously
+     */
+    JsonReader(int32_t max_nesting = MaxNesting, CPPJSON_MALLOC_TYPE alloc = CPPJSON_NULL, CPPJSON_FREE_TYPE dealloc = CPPJSON_NULL);
+    ~JsonReader();
+
+    /**
+     * @param begin
+     * @param end
+     * @return
+     * @pre begin != null
+     * @pre end != null
+     * @pre begin<=end
+     */
+    bool parse(const char* begin, const char* end);
+    JsonProxy root() const;
+private:
+    JsonReader(const JsonReader&) = delete;
+    JsonReader& operator=(const JsonReader&) = delete;
+
+    uint32_t add();
+    void add_value(uint32_t set, uint32_t value);
+
+    const char* whitespace(const char* str);
+    const char* parse_utf8(const char* str);
+    const char* parse_element(const char* str);
+    std::tuple<const char*, uint32_t> parse_value(const char* str);
+    std::tuple<const char*, uint32_t> parse_string(const char* str);
+    const char* parse_4hex(const char* str);
+    const char* parse_zero_number(JsonType& type, const char* str);
+    const char* parse_number(JsonType& type, const char* str);
+    const char* parse_fraction(const char* str);
+    const char* parse_exponent(const char* str);
+    const char* parse_digits(const char* str);
+    std::tuple<const char*, uint32_t> parse_object(const char* str);
+    std::tuple<const char*, uint32_t> parse_member(const char* str);
+    std::tuple<const char*, uint32_t> parse_array(const char* str);
+    std::tuple<const char*, uint32_t> parse_array_value(const char* str);
+    const char* parse_true(const char* str);
+    const char* parse_false(const char* str);
+    const char* parse_null(const char* str);
+
+    CPPJSON_MALLOC_TYPE alloc_; //!< allocator
+    CPPJSON_FREE_TYPE dealloc_; //!< deallocator
+    const char* begin_; //!< begin of document
+    const char* end_; //!< end of document
+    int32_t max_nesting_; //!< the maximum of nesting
+    int32_t nesting_; //!< current nesting
+
+    uint32_t capacity_; //!< capacity of buffer
+    uint32_t size_; //!< current size of buffer
+    JsonValue* values_; //!< elements of Json
+};
+} // namespace cppjson
+
+#endif // INC_CPPJSON_H_
 
 #ifdef CPPJSON_IMPLEMENTATION
+#include <charconv>
+#include <cstdlib>
+#include <cstring>
+
 namespace cppjson
 {
 
-    FILE* fopen_s(const Char* filename, const Char* mode)
-    {
-#ifdef _MSC_VER
-        FILE* file = NULL;
-        return 0 == ::fopen_s(&file, filename, mode)? file : NULL;
+JsonProxy::operator bool() const
+{
+    return JsonReader::Invalid != value_;
+}
+
+JsonType JsonProxy::type() const
+{
+    if(JsonReader::Invalid != value_) {
+        return static_cast<JsonType>(values_[value_].type_);
+    }
+    return JsonType::Invalid;
+}
+
+uint64_t JsonProxy::size() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    return values_[value_].size_;
+}
+
+JsonProxy JsonProxy::begin() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(static_cast<uint32_t>(JsonType::Object) != values_[value_].type_
+       && static_cast<uint32_t>(JsonType::Array) != values_[value_].type_) {
+        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+    }
+    return {values_[value_].next_, data_, values_};
+}
+
+JsonProxy JsonProxy::next() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    return {values_[value_].next_, data_, values_};
+}
+
+JsonProxy JsonProxy::key() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(JsonType::KeyValue != type()) {
+        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+    }
+    return {values_[value_].start_, data_, values_};
+}
+
+JsonProxy JsonProxy::value() const
+{
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(JsonType::KeyValue != type() && JsonType::ArrayValue != type()) {
+        return {JsonReader::Invalid, CPPJSON_NULL, CPPJSON_NULL};
+    }
+    return {values_[value_].size_, data_, values_};
+}
+
+uint64_t JsonProxy::getString(char* str) const
+{
+    ::memcpy(str, data_ + values_[value_].start_, values_[value_].size_);
+    str[values_[value_].size_] = '\0';
+    return values_[value_].size_;
+}
+
+int64_t JsonProxy::getInt64() const
+{
+    const char* first = data_ + values_[value_].start_;
+    const char* last = first + values_[value_].size_;
+    int64_t value = 0;
+    std::from_chars(first, last, value);
+    return value;
+}
+
+double JsonProxy::getFloat64() const
+{
+    const char* first = data_ + values_[value_].start_;
+#if _MSC_VER
+    const char* last = first + values_[value_].size_;
+    double value = 0;
+    std::from_chars(first, last, value);
 #else
-        return fopen(filename, mode);
+    char buffer[127];
+    uint64_t size = values_[value_].size_ < 128ULL ? values_[value_].size_ : 127ULL;
+    ::memcpy(buffer, first, size);
+    buffer[size] = '\0';
+    double value = strtod(buffer, CPPJSON_NULL);
 #endif
+    return value;
+}
+
+JsonReader::JsonReader(int32_t max_nesting, CPPJSON_MALLOC_TYPE alloc, CPPJSON_FREE_TYPE dealloc)
+    : alloc_(alloc)
+    , dealloc_(dealloc)
+    , max_nesting_(max_nesting)
+    , nesting_(0)
+    , capacity_(0)
+    , size_(0)
+    , values_(CPPJSON_NULL)
+{
+    CPPJSON_ASSERT(0 < max_nesting_);
+    if(CPPJSON_NULL == alloc_ || CPPJSON_NULL == dealloc_) {
+        alloc_ = ::malloc;
+        dealloc_ = ::free;
     }
+    CPPJSON_ASSERT(CPPJSON_NULL != alloc_);
+    CPPJSON_ASSERT(CPPJSON_NULL != dealloc_);
+}
 
-    //--------------------------------------------
-    //---
-    //--- String
-    //---
-    //--------------------------------------------
-    String::String()
-        :capacity_(ExpandSize)
-        ,length_(0)
-    {
-        buffer_.small_[0] = '\0';
+JsonReader::~JsonReader()
+{
+    dealloc_(values_);
+    values_ = CPPJSON_NULL;
+}
+
+bool JsonReader::parse(const char* begin, const char* end)
+{
+    CPPJSON_ASSERT(CPPJSON_NULL != begin);
+    CPPJSON_ASSERT(CPPJSON_NULL != end);
+    CPPJSON_ASSERT(begin <= end);
+    begin_ = begin;
+    end_ = end;
+    size_ = 0;
+
+    const char* str = parse_element(begin_);
+    if(CPPJSON_NULL == str) {
+        return false;
     }
+    str = whitespace(str);
+    return end_ <= str;
+}
 
-    String::String(String&& rhs)
-        :capacity_(rhs.capacity_)
-        ,length_(rhs.length_)
-        ,buffer_(rhs.buffer_)
-    {
-        rhs.capacity_ = 0;
-        rhs.length_ = 0;
-        rhs.buffer_.elements_ = NULL;
+JsonProxy JsonReader::root() const
+{
+    if(size_ <= 0) {
+        return {Invalid, CPPJSON_NULL, CPPJSON_NULL};
     }
+    return {0, begin_, values_};
+}
 
-    String::~String()
-    {
-        if(ExpandSize<capacity_){
-            CPPJSON_FREE(buffer_.elements_);
-            buffer_.elements_ = NULL;
+uint32_t JsonReader::add()
+{
+    if(capacity_ <= size_) {
+        uint32_t capacity = capacity_ + Expand;
+        JsonValue* values = reinterpret_cast<JsonValue*>(alloc_(sizeof(JsonValue) * capacity));
+        if(0 < capacity_) {
+            ::memcpy(values, values_, sizeof(JsonValue) * capacity_);
         }
-        capacity_ = 0;
-        length_ = 0;
-    }
-
-    void String::clear()
-    {
-        length_ = 0;
-        Char* buffer = getBuffer();
-        buffer[0] = '\0';
-    }
-
-    void String::resize(s32 length)
-    {
-        CPPJSON_ASSERT(0<=length);
-        reserve(length+1);
-        length_ = length;
-    }
-
-    void String::reserve(s32 capacity)
-    {
-        CPPJSON_ASSERT(0<=capacity);
-        length_ = 0;
-        if(capacity<=capacity_) {
-            Char* buffer = getBuffer();
-            buffer[0] = '\0';
-            return;
-        }
-        if(ExpandSize<capacity_) {
-            CPPJSON_FREE(buffer_.elements_);
-        }
-        if(capacity<=ExpandSize){
-            capacity_ = ExpandSize;
-            buffer_.small_[0] = '\0';
-            return;
-        }
-
-        capacity_ = getCapacity(capacity);
-        buffer_.elements_ = (Char*)CPPJSON_MALLOC(capacity_);
-        buffer_.elements_[0] = '\0';
-    }
-
-    String& String::operator=(String&& rhs)
-    {
-        if(this == &rhs){
-            return *this;
-        }
-        capacity_ = rhs.capacity_;
-        length_ = rhs.length_;
-        buffer_ = rhs.buffer_;
-
-        rhs.capacity_ = 0;
-        rhs.length_ = 0;
-        rhs.buffer_.elements_ = NULL;
-        return *this;
-    }
-
-    String& String::operator=(const Char* str)
-    {
-        CPPJSON_ASSERT(NULL != str);
-        s32 length = static_cast<s32>(::strlen(str));
-        assign(length, str);
-        return *this;
-    }
-
-    void String::assign(s32 length, const Char* str)
-    {
-        CPPJSON_ASSERT(NULL != str);
-        CPPJSON_ASSERT(static_cast<size_t>(length)<=::strlen(str));
-        if(length<=0){
-            clear();
-            return;
-        }
-        createBuffer(length);
-        length_ = length;
-        Char* buffer = getBuffer();
-        ::memcpy(buffer, str, sizeof(Char)*length_);
-        buffer[length_] = '\0';
-    }
-
-    void String::initBuffer(s32 length)
-    {
-        if(length<ExpandSize){
-            capacity_ = ExpandSize;
-            length_ = length;
-            buffer_.small_[length_] = '\0';
-            return;
-        }
-        s32 capacity = length+1;
-        capacity_ = getCapacity(capacity);
-        length_ = length;
-        buffer_.elements_ = (Char*)CPPJSON_MALLOC(capacity_);
-        buffer_.elements_[length_] = '\0';
-    }
-
-    void String::createBuffer(s32 length)
-    {
-        s32 capacity = length+1;
-        if(capacity<=capacity_){
-            return;
-        }
-        if(capacity<=ExpandSize){
-            capacity_ = ExpandSize;
-            return;
-        }
-        if(ExpandSize<capacity_){
-            CPPJSON_FREE(buffer_.elements_);
-        }
-
-        capacity_ = getCapacity(capacity);
-        buffer_.elements_ = (Char*)CPPJSON_MALLOC(capacity_);
-    }
-
-    void String::expandBuffer(s32 length)
-    {
-        s32 capacity = length+1;
-        if(capacity<=capacity_) {
-            return;
-        }
-        if(capacity<=ExpandSize){
-            capacity_ = ExpandSize;
-            return;
-        }
-        capacity = getCapacity(capacity);
-        Char* elements = (Char*)CPPJSON_MALLOC(capacity);
-        Char* buffer = getBuffer();
-        ::memcpy(elements, buffer, sizeof(Char)*capacity_);
-        if(ExpandSize<capacity_){
-            CPPJSON_FREE(buffer_.elements_);
-        }
-
+        dealloc_(values_);
         capacity_ = capacity;
-        buffer_.elements_ = elements;
+        values_ = values;
     }
+    uint32_t current = size_;
+    ++size_;
+    return current;
+}
 
-    boolean String::operator==(const String& rhs) const
-    {
-        return (length() == rhs.length())? 0 == ::strncmp(c_str(), rhs.c_str(), length()) : false;
+void JsonReader::add_value(uint32_t set, uint32_t value)
+{
+    ++values_[set].size_;
+    while(Invalid != values_[set].next_) {
+        set = values_[set].next_;
     }
+    values_[set].next_ = value;
+}
 
-    boolean operator==(const String& lhs, const Char* rhs)
-    {
-        s32 len= static_cast<s32>(::strlen(rhs));
-        return (lhs.length() == len)? 0 == ::strncmp(lhs.c_str(), rhs, len) : false;
-    }
-
-    boolean operator==(const Char* lhs, const String& rhs)
-    {
-        s32 len= static_cast<s32>(::strlen(lhs));
-        return (len == rhs.length())? 0 == ::strncmp(lhs, rhs.c_str(), len) : false;
-    }
-
-    //---------------------------------------------------------------
-    //---
-    //--- IStream
-    //---
-    //---------------------------------------------------------------
-    ISStream::ISStream()
-        :pos_(0)
-        ,length_(0)
-        ,str_(NULL)
-    {
-    }
-
-    ISStream::ISStream(ISStream&& rhs)
-        :pos_(rhs.pos_)
-        ,length_(rhs.length_)
-        ,str_(rhs.str_)
-    {
-        rhs.pos_ = 0;
-        rhs.length_ = 0;
-        rhs.str_ = NULL;
-    }
-
-    ISStream::ISStream(off_t length, const s8* str)
-        :pos_(0)
-        ,length_(length)
-        ,str_(str)
-    {
-        CPPJSON_ASSERT(0<=length_);
-        CPPJSON_ASSERT(NULL != str_);
-    }
-
-    ISStream::~ISStream()
-    {
-        pos_ = 0;
-        length_ = 0;
-        str_ = NULL;
-    }
-
-    off_t ISStream::tell() const
-    {
-        return pos_;
-    }
-
-    boolean ISStream::seek(off_t pos)
-    {
-        CPPJSON_ASSERT(0<=pos && pos<length_);
-        pos_ = pos;
-        return true;
-    }
-
-    s32 ISStream::get()
-    {
-        s32 ret=-1;
-        if(pos_<length_){
-            ret = str_[pos_];
-            ++pos_;
-        }
-        return ret;
-    }
-
-    s32 ISStream::unget(s32 c)
-    {
-        --pos_;
-        CPPJSON_ASSERT(0<=pos_ && pos_<length_);
-        CPPJSON_ASSERT(str_[pos_] == c);
-        return c;
-    }
-
-    s32 ISStream::read(u8* dst, off_t size)
-    {
-        CPPJSON_ASSERT(NULL != dst);
-        off_t end = pos_+size;
-        if(length_<end){
-            return 0;
-        }
-        for(off_t i=0; i<size; ++i){
-            dst[i] = str_[pos_];
-            ++pos_;
-        }
-        return 1;
-    }
-
-    boolean ISStream::isEOF() const
-    {
-        return length_<=pos_;
-    }
-
-    ISStream& ISStream::operator=(ISStream&& rhs)
-    {
-        if(this == &rhs){
-            return *this;
-        }
-        pos_ = rhs.pos_;
-        length_ = rhs.length_;
-        str_ = rhs.str_;
-
-        rhs.pos_ = 0;
-        rhs.length_ = 0;
-        rhs.str_ = NULL;
-        return *this;
-    }
-
-    //---------------------------------------------------------------
-    //---
-    //--- IFStream
-    //---
-    //---------------------------------------------------------------
-    IFStream::IFStream()
-        :pos_(0)
-        ,file_(NULL)
-    {
-    }
-
-    IFStream::IFStream(IFStream&& rhs)
-        :pos_(rhs.pos_)
-        ,file_(rhs.file_)
-    {
-        rhs.pos_ = 0;
-        rhs.file_ = NULL;
-    }
-
-    IFStream::IFStream(FILE* file)
-        :pos_(0)
-        ,file_(file)
-    {
-        CPPJSON_ASSERT(NULL != file_);
-#if _MSC_VER
-        pos_ = CPPJSON_FTELL(file_);
-#else
-        pos_ = CPPJSON_FTELL(file_);
-#endif
-    }
-
-    IFStream::~IFStream()
-    {
-        pos_ = 0;
-        file_ = NULL;
-    }
-
-    off_t IFStream::tell() const
-    {
-#if _MSC_VER
-        return CPPJSON_FTELL(file_)-pos_;
-#else
-        return CPPJSON_FTELL(file_)-pos_;
-#endif
-    }
-
-    boolean IFStream::seek(off_t pos)
-    {
-#if _MSC_VER
-        return 0<=CPPJSON_FSEEK(file_, pos_+pos, SEEK_SET);
-#else 
-        return 0<=CPPJSON_FSEEK(file_, pos_+pos, SEEK_SET);
-#endif
-    }
-
-    s32 IFStream::get()
-    {
-        return fgetc(file_);
-    }
-
-    s32 IFStream::unget(s32 c)
-    {
-        return ungetc(c, file_);
-    }
-
-    s32 IFStream::read(u8* dst, off_t size)
-    {
-        CPPJSON_ASSERT(NULL != dst);
-        return static_cast<s32>(fread(dst, size, 1, file_));
-    }
-
-    boolean IFStream::isEOF() const
-    {
-        return 0!=feof(file_);
-    }
-
-    IFStream& IFStream::operator=(IFStream&& rhs)
-    {
-        if(this == &rhs){
-            return *this;
-        }
-        pos_ = rhs.pos_;
-        file_ = rhs.file_;
-
-        rhs.pos_ = 0;
-        rhs.file_ = NULL;
-        return *this;
-    }
-
-    //---------------------------------------------------------------
-    //---
-    //--- RangeStream
-    //---
-    //---------------------------------------------------------------
-    RangeStream::RangeStream(IStream* stream, const Range& range)
-        :stream_(stream)
-        ,start_(range.start_)
-        ,length_(range.length_)
-    {
-        CPPJSON_ASSERT(NULL != stream_);
-        CPPJSON_ASSERT(0<=start_);
-        CPPJSON_ASSERT(0<=length_);
-    }
-
-    off_t RangeStream::length() const
-    {
-        return length_;
-    }
-
-    s32 RangeStream::read(u8* dst)
-    {
-        CPPJSON_ASSERT(NULL != dst);
-        off_t pos = stream_->tell();
-        if(!stream_->seek(start_)){
-            return 0;
-        }
-        s32 ret = stream_->read(dst, length_);
-        if(!stream_->seek(pos)){
-            return 0;
-        }
-        return ret;
-    }
-
-    s32 RangeStream::readAsString(Char* str)
-    {
-        CPPJSON_ASSERT(NULL != str);
-        off_t pos = stream_->tell();
-        if(!stream_->seek(start_)){
-            return 0;
-        }
-        s32 ret = stream_->read(reinterpret_cast<u8*>(str), length_);
-        if(!stream_->seek(pos)){
-            return 0;
-        }
-        str[length_] = '\0';
-        return ret;
-    }
-
-    s32 RangeStream::readAsString(String& str)
-    {
-        str.resize(static_cast<s32>(length_));
-        off_t pos = stream_->tell();
-        if(!stream_->seek(start_)){
-            return 0;
-        }
-        Char* c = str.c_str();
-        s32 ret = stream_->read(reinterpret_cast<u8*>(c), length_);
-        if(!stream_->seek(pos)){
-            return 0;
-        }
-        c[length_] = '\0';
-        return ret;
-    }
-
-    s32 RangeStream::readAsInt(s32 defaultValue)
-    {
-        static const s32 MaxSize = 32;
-        CPPJSON_ASSERT(length_<MaxSize);
-        off_t pos = stream_->tell();
-        if(!stream_->seek(start_)){
-            return defaultValue;
-        }
-        Char buffer[MaxSize];
-        s32 ret = stream_->read(reinterpret_cast<u8*>(buffer), length_);
-        if(!stream_->seek(pos)){
-            return defaultValue;
-        }
-        if(ret<=0){
-            return defaultValue;
-        }
-        buffer[length_] = '\0';
-        return atol(buffer);
-    }
-
-    f32 RangeStream::readAsFloat(f32 defaultValue)
-    {
-        static const s32 MaxSize = 32;
-        CPPJSON_ASSERT(length_<MaxSize);
-        off_t pos = stream_->tell();
-        if(!stream_->seek(start_)){
-            return defaultValue;
-        }
-        Char buffer[MaxSize];
-        s32 ret = stream_->read(reinterpret_cast<u8*>(buffer), length_);
-        if(!stream_->seek(pos)){
-            return defaultValue;
-        }
-        if(ret<=0){
-            return defaultValue;
-        }
-        buffer[length_] = '\0';
-        return static_cast<f32>(atof(buffer));
-    }
-
-    //---------------------------------------------------------------
-    //---
-    //--- JSONReader
-    //---
-    //---------------------------------------------------------------
-    JSONReader::JSONReader(IStream& istream, JSONEventHandler& handler)
-        :flags_(0)
-        ,istream_(istream)
-        ,handler_(handler)
-    {}
-
-    JSONReader::~JSONReader()
-    {
-    }
-
-    boolean JSONReader::read(s32 flags)
-    {
-        handler_.begin();
-        flags_ = flags;
-        Range value;
-        if(!skipSpace()){
-            if(istream_.isEOF()){
-                return true;
-            } else{
-                onError();
-                return false;
-            }
-        }
-        s32 type = getValue(value);
-        if(JSON_Error == type || (JSON_Array != type && JSON_Object != type)){
-            return false;
-        }
-        while(!istream_.isEOF()){
-            s32 c = istream_.get();
-            if(c==EOF){
-                break;
-            }
-            if(!isspace(c)){
-                return false;
-            }
-        }
-        handler_.root(type, RangeStream(&istream_, value));
-        handler_.end();
-        return true;
-    }
-
-    boolean JSONReader::skipSpace()
-    {
-        for(;;){
-            s32 c = istream_.get();
-            if(c<0){
-                return false;
-            }
-            if(!isspace(c)){
-                return EOF != istream_.unget(c);
-            }
-        }
-    }
-
-    boolean JSONReader::check(const s8* str)
-    {
-        CPPJSON_ASSERT(NULL != str);
-        while('\0' != *str){
-            s32 c = istream_.get();
-            if(c<0){
-                return false;
-            }
-            if(c != *str){
-                return false;
-            }
+const char* JsonReader::whitespace(const char* str)
+{
+    while(str < end_) {
+        switch(str[0]) {
+        case 0x20:
+        case 0x0A:
+        case 0x0D:
+        case 0x09:
             ++str;
-        }
-        return true;
-    }
-
-    void JSONReader::setStart(Range& range)
-    {
-        range.start_ = istream_.tell();
-        range.length_ = 0;
-    }
-
-    void JSONReader::setLength(Range& range)
-    {
-        range.length_ = istream_.tell()-range.start_-1;
-    }
-
-    s32 JSONReader::onError()
-    {
-        if(Flag_ErrorReported == (flags_&Flag_ErrorReported)){
-            return JSON_Error;
-        }
-        flags_ |= Flag_ErrorReported;
-        off_t pos = istream_.tell();
-        if(!istream_.seek(0)){
-            handler_.onError(-1, -1);
-            return JSON_Error;
-        }
-
-        s32 line = 0;
-        s32 count = 0;
-        for(;;){
-            s32 c = istream_.get();
-            if(c == EOF){
-                break;
-            }
-            if(c == '\r'){
-                s32 c1 = istream_.get();
-                if(c1 != '\n'){
-                    if(EOF != c1){
-                        istream_.unget(c1);
-                    }
-                }
-                ++line;
-                count = 0;
-            }else if(c == '\n'){
-                ++line;
-                count = 0;
-            }else{
-                ++count;
-            }
-            if(istream_.tell() == pos){
-                break;
-            }
-        }
-        handler_.onError(line+1, count);
-        return JSON_Error;
-    }
-
-    s32 JSONReader::getObject(Range& object)
-    {
-        setStart(object);
-        handler_.beginObject();
-        Range key;
-        key.reset();
-        boolean bKeyValue = false;
-        boolean bSeparator = false;
-        for(;;){
-            if(!skipSpace()){
-                return onError();
-            }
-            s32 c = istream_.get();
-            switch(c){
-            case JSONToken_OBJEnd:
-                if(bSeparator && !bKeyValue){
-                    return onError();
-                }
-                setLength(object);
-                handler_.endObject(RangeStream(&istream_, object));
-                return JSON_OK;
-
-            case JSONToken_DQuote:
-            {
-                if(bKeyValue && !bSeparator){
-                    return onError();
-                }
-                bKeyValue = true;
-                bSeparator = false;
-                if(JSON_Error == getString(key)){
-                    return onError();
-                }
-
-                if(!skipSpace()){
-                    return onError();
-                }
-                if(JSONToken_OBJColon != istream_.get()){
-                    return onError();
-                }
-                if(!skipSpace()){
-                    return onError();
-                }
-                Range value;
-                s32 type = getValue(value);
-                if(JSON_Error == type){
-                    return JSON_Error;
-                }
-                handler_.keyValue(RangeStream(&istream_, key), type, RangeStream(&istream_, value));
-            }
             break;
-            case JSONToken_Separator:
-                if(!bKeyValue){
-                    return onError();
-                }
-                bKeyValue = false;
-                bSeparator = true;
-                break;
-            default:
-                return onError();
-            }
-        }
-    }
-
-    s32 JSONReader::getArray(Range& array)
-    {
-        setStart(array);
-        handler_.beginArray();
-        if(!skipSpace()){
-            return onError();
-        }
-        s32 c = istream_.get();
-        if(c<0){
-            return onError();
-        }
-        switch(c){
-        case JSONToken_ArrayEnd:
-            setLength(array);
-            handler_.endArray(RangeStream(&istream_, array));
-            return JSON_OK;
-        case JSONToken_Separator:
-            return onError();
         default:
-            break;
-        }
-
-        s32 prev = JSONToken_ArrayStart;
-        for(;;){
-            switch(c){
-            case JSONToken_ArrayEnd:
-                if(JSONToken_Separator == prev){
-                    return onError();
-                }
-                setLength(array);
-                handler_.endArray(RangeStream(&istream_, array));
-                return JSON_OK;
-            case JSONToken_Separator:
-                if(JSONToken_Separator == prev){
-                    return onError();
-                }
-                prev = JSONToken_Separator;
-                break;
-            default:
-                if(JSONToken_Value == prev){
-                    return onError();
-                }
-                prev = JSONToken_Value;
-                if(EOF == istream_.unget(c)){
-                    return onError();
-                }
-                Range value;
-                s32 type = getValue(value);
-                if(JSON_Error == type){
-                    return JSON_Error;
-                }
-                handler_.value(type, RangeStream(&istream_, value));
-                break;
-            }
-            if(!skipSpace()){
-                return onError();
-            }
-            c = istream_.get();
-            if(c<0){
-                return onError();
-            }
+            return str;
         }
     }
+    return str;
+}
 
-    s32 JSONReader::getValue(Range& value)
-    {
-        s32 c = istream_.get();
-        if(c<0){
-            return onError();
+const char* JsonReader::parse_utf8(const char* str)
+{
+    const uint8_t* u = reinterpret_cast<const uint8_t*>(str);
+
+    if(0x20U <= u[0] && u[0] < 0x80U) {
+        return str + 1;
+    }
+
+    if(0xC2U <= u[0] && u[0] <= 0xDFU) {
+        if(end_ <= (str + 1)) {
+            return CPPJSON_NULL;
         }
-        setStart(value);
-        s32 type;
-        switch(c)
-        {
-        case JSONToken_OBJStart:
-            if(JSON_Error == getObject(value)){
-                return onError();
+        return str + 2;
+    }
+
+    if(0xE0U <= u[0] && u[0] < 0xF0U) {
+        if(end_ <= (str + 2)) {
+            return CPPJSON_NULL;
+        }
+        if(0xE0U == u[0] && 0x80U <= u[1] && u[1] <= 0x9FU) {
+            return CPPJSON_NULL;
+        }
+        return str + 3;
+    }
+
+    if(0xF0U <= u[0] && u[0] < 0xF4U) {
+        if(end_ <= (str + 3)) {
+            return CPPJSON_NULL;
+        }
+        if(0xF0U == u[0] && 0x80U <= u[1] && u[1] <= 0x8FU) {
+            return CPPJSON_NULL;
+        }
+        if(0xF4U == u[0] && 0x90U <= u[1]) {
+            return CPPJSON_NULL;
+        }
+        return str + 4;
+    }
+    return CPPJSON_NULL;
+}
+
+const char* JsonReader::parse_element(const char* str)
+{
+    str = whitespace(str);
+    if(end_ <= str) {
+        return CPPJSON_NULL;
+    }
+    auto [n, v] = parse_value(str);
+    str = n;
+    if(CPPJSON_NULL == str) {
+        return CPPJSON_NULL;
+    }
+    return whitespace(str);
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_value(const char* str)
+{
+    const char* begin = str;
+    const char* next = CPPJSON_NULL;
+    JsonType type;
+    switch(str[0]) {
+    case '"':
+        return parse_string(str);
+    case '-': {
+        ++str;
+        if(end_ <= str || str[0] < '0' || '9' < str[0]) {
+            return InvalidPair;
+        }
+        switch(str[0]) {
+        case '0': {
+            next = parse_zero_number(type, str);
+        } break;
+        default:
+            next = parse_number(type, str);
+            break;
+        }
+    } break;
+    case '0':
+        next = parse_zero_number(type, str);
+        break;
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        next = parse_number(type, str);
+        break;
+    case '{':
+        return parse_object(str);
+    case '[':
+        return parse_array(str);
+    case 't':
+        type = JsonType::True;
+        next = parse_true(str);
+        break;
+    case 'f':
+        type = JsonType::False;
+        next = parse_false(str);
+        break;
+    case 'n':
+        type = JsonType::Null;
+        next = parse_null(str);
+        break;
+    default:
+        return InvalidPair;
+    }
+    if(CPPJSON_NULL == next) {
+        return InvalidPair;
+    }
+
+    uint32_t value = add();
+    values_[value].start_ = reinterpret_cast<uint64_t>(begin) - reinterpret_cast<uint64_t>(begin_);
+    values_[value].size_ = reinterpret_cast<uint64_t>(next) - reinterpret_cast<uint64_t>(begin);
+    values_[value].next_ = Invalid;
+    values_[value].type_ = static_cast<uint32_t>(type);
+    return {next, value};
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_string(const char* str)
+{
+    CPPJSON_ASSERT('"' == str[0]);
+    ++str;
+    const char* begin = str;
+    uint32_t value = add();
+    values_[value].start_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin_);
+    values_[value].next_ = Invalid;
+    values_[value].type_ = static_cast<uint32_t>(JsonType::String);
+    while(str < end_) {
+        switch(str[0]) {
+        case '"':
+            values_[value].size_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin);
+            return {str + 1, value};
+        case '\\': {
+            const char* next = str + 1;
+            if(end_ <= next) {
+                return InvalidPair;
             }
-            type = JSON_Object;
-            break;
-        case JSONToken_ArrayStart:
-            if(JSON_Error == getArray(value)){
-                return onError();
+            switch(next[0]) {
+            case '"':
+            case '\\':
+            case '/':
+            case 'b':
+            case 'f':
+            case 'n':
+            case 'r':
+            case 't':
+                str = next + 1;
+                break;
+            case 'u':
+                str = parse_4hex(next + 1);
+                if(CPPJSON_NULL == str) {
+                    return InvalidPair;
+                }
+                ++str;
+                break;
+            default:
+                return InvalidPair;
             }
-            type = JSON_Array;
-            break;
-        case JSONToken_DQuote:
-            type = getString(value);
-            break;
-        case 't':
-            if(!check(reinterpret_cast<const s8*>("rue"))){
-                return onError();
+        } break;
+        default:
+            str = parse_utf8(str);
+            if(CPPJSON_NULL == str) {
+                return InvalidPair;
             }
-            type = JSON_True;
-            setLength(value);
             break;
+        }
+    }
+    return InvalidPair;
+}
+
+const char* JsonReader::parse_4hex(const char* str)
+{
+    uint32_t count = 0;
+    while(str < end_) {
+        switch(str[0]) {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case 'A':
+        case 'B':
+        case 'C':
+        case 'D':
+        case 'E':
+        case 'F':
+        case 'a':
+        case 'b':
+        case 'c':
+        case 'd':
+        case 'e':
         case 'f':
-            if(!check(reinterpret_cast<const s8*>("alse"))){
-                return onError();
-            }
-            type = JSON_False;
-            setLength(value);
-            break;
-        case 'n':
-            if(!check(reinterpret_cast<const s8*>("ull"))){
-                return onError();
-            }
-            type = JSON_Null;
-            setLength(value);
+            ++count;
             break;
         default:
-            if(EOF == istream_.unget(c)){
-                return onError();
-            }
-            type = getNumber(value);
-            break;
+            return CPPJSON_NULL;
         }
-        return type;
+        if(4 <= count) {
+            return str;
+        }
+        ++str;
     }
+    return CPPJSON_NULL;
+}
 
-    s32 JSONReader::getString(Range& str)
-    {
-        setStart(str);
-        for(;;){
-            s32 c = istream_.get();
-            if(c<0){
-                return onError();
-            }
-
-            s32 n;
-            if(0 == (c&0x80U)){//1byte
-                switch(c){
-                case JSONToken_DQuote:
-                    setLength(str);
-                    return JSON_String;
-                case JSONToken_Escape:
-                    c = istream_.get();
-                    if(c<0){
-                        return onError();
-                    }
-                    switch(c){
-                    case JSONToken_DQuote:
-                    case JSONToken_Escape:
-                    case '/':
-                    case 'b':
-                    case 'f':
-                    case 'n':
-                    case 'r':
-                    case 't':
-                    case 'u':
-                        break;
-                    default:
-                        return onError();
-                    }
-                    break;
-                case '\t':
-                case '\n':
-                    return onError();
-                }
-                continue;
-
-            }else if(6 == (c>>5)){//2byte
-                n=1;
-            }else if(14 == (c>>4)){//3byte
-                n=2;
-            }else if(30 == (c>>3)){//4byte
-                n=3;
-            }else if(62 == (c>>2)){//5byte
-                n=4;
-            }else if(126 == (c>>1)){//6byte
-                n=5;
-            }else{
-                return onError();
-            }
-            for(s32 i=0; i<n; ++i){
-                c = istream_.get();
-                if(c<0 || 2 != (c>>6)){
-                    return onError();
-                }
-            }
-        }
+const char* JsonReader::parse_zero_number(JsonType& type, const char* str)
+{
+    CPPJSON_ASSERT('0' == str[0]);
+    ++str;
+    if(end_ <= str) {
+        return str;
     }
-
-    s32 JSONReader::getNumber(Range& number)
-    {
-        setStart(number);
-        s32 type = JSON_Integer;
-        s32 c = istream_.get();
-        if(c<0){
-            return onError();
-        }
-        if(c=='-'){
-            c = istream_.get();
-        }
-        if(!isNumber(c)){
-            return onError();
-        }
-        if(c != '0'){
-            if(JSON_Error == getDigit()){
-                return JSON_Error;
-            }
-        }
-        c = istream_.get();
-        if(c == '.'){
-            c = istream_.get();
-            if(!isNumber(c)){
-                return onError();
-            }
-            if(JSON_Error == getDigit()){
-                return JSON_Error;
-            }
-            type = JSON_Float;
-            c = istream_.get();
-        }
-
-        if(c=='e' || c=='E'){
-            c = istream_.get();
-            if(c=='+'||c=='-'){
-                c = istream_.get();
-            }
-            if(!isNumber(c)){
-                return onError();
-            }
-            istream_.unget(c);
-            c = getDigit(false);
-            if(JSON_Error == c){
-                return JSON_Error;
-            }
-            type = JSON_Float;
-        }else if(c<0){
-            return onError();
-        }
-        setLength(number);
-        return (EOF != istream_.unget(c))? type : onError();
-    }
-
-    s32 JSONReader::getDigit(boolean unget)
-    {
-        s32 c = EOF;
-        for(;;){
-            c = istream_.get();
-            if(c<0){
-                return onError();
-            }
-            if(!isNumber(c)){
-                if(unget){
-                    return (EOF != istream_.unget(c))? c : onError();
-                }
-                break;
-            }
-        }
-        return c;
-    }
-
-    boolean JSONReader::isNumber(s32 c) const
-    {
-        return ('0'<=c && c<='9');
-    }
-    boolean JSONReader::isOneToNine(s32 c) const
-    {
-        return ('1'<=c && c<='9');
+    switch(str[0]) {
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        return CPPJSON_NULL;
+    case '.':
+        type = JsonType::Number;
+        return parse_fraction(str);
+    case 'e':
+    case 'E':
+        type = JsonType::Number;
+        return parse_exponent(str);
+    default:
+        type = JsonType::Integer;
+        return str;
     }
 }
-#endif //CPPJSON_IMPLEMENTATION
+
+const char* JsonReader::parse_number(JsonType& type, const char* str)
+{
+    CPPJSON_ASSERT('1' <= str[0] && str[0] <= '9');
+    ++str;
+    while(str < end_) {
+        switch(str[0]) {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            ++str;
+            break;
+        case '.':
+            type = JsonType::Number;
+            return parse_fraction(str);
+        case 'e':
+        case 'E':
+            type = JsonType::Number;
+            return parse_exponent(str);
+        default:
+            type = JsonType::Integer;
+            return str;
+        }
+    }
+    type = JsonType::Integer;
+    return str;
+}
+
+const char* JsonReader::parse_fraction(const char* str)
+{
+    CPPJSON_ASSERT('.' == str[0]);
+    str = parse_digits(str + 1);
+    if(CPPJSON_NULL == str || end_ <= str) {
+        return str;
+    }
+    switch(str[0]) {
+    case 'e':
+    case 'E':
+        return parse_exponent(str);
+    default:
+        return str;
+    }
+}
+
+const char* JsonReader::parse_exponent(const char* str)
+{
+    CPPJSON_ASSERT('e' == str[0] || 'E' == str[0]);
+    ++str;
+    if(end_ <= str) {
+        return CPPJSON_NULL;
+    }
+    if(str[0] == '-' || str[0] == '+') {
+        ++str;
+        if(end_ <= str) {
+            return CPPJSON_NULL;
+        }
+    }
+    return parse_digits(str);
+}
+
+const char* JsonReader::parse_digits(const char* str)
+{
+    uint32_t count = 0;
+    while(str < end_) {
+        switch(str[0]) {
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            ++str;
+            ++count;
+            break;
+        default:
+            return (0 < count) ? str : CPPJSON_NULL;
+        }
+    }
+    return (0 < count) ? str : CPPJSON_NULL;
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_object(const char* str)
+{
+    CPPJSON_ASSERT('{' == str[0]);
+    if(max_nesting_ < ++nesting_) {
+        return InvalidPair;
+    }
+    uint32_t object = add();
+    values_[object].start_ = reinterpret_cast<uint64_t>(str) - reinterpret_cast<uint64_t>(begin_);
+    values_[object].size_ = 0;
+    values_[object].next_ = Invalid;
+    values_[object].type_ = static_cast<uint32_t>(JsonType::Object);
+
+    ++str;
+    bool needs_member = false;
+    bool needs_comma = false;
+    while(str < end_) {
+        str = whitespace(str);
+        if(end_ <= str) {
+            return InvalidPair;
+        }
+        switch(str[0]) {
+        case '}':
+            --nesting_;
+            if(!needs_member) {
+                return {str + 1, object};
+            } else {
+                return InvalidPair;
+            }
+        case '"': {
+            if(needs_comma) {
+                return InvalidPair;
+            }
+            auto [n, v] = parse_member(str);
+            str = n;
+            if(CPPJSON_NULL == str) {
+                return InvalidPair;
+            }
+            add_value(object, v);
+            needs_member = false;
+            needs_comma = true;
+        } break;
+        case ',':
+            if(needs_member) {
+                return InvalidPair;
+            }
+            ++str;
+            needs_member = true;
+            needs_comma = false;
+            break;
+        default:
+            return InvalidPair;
+        }
+    }
+    return InvalidPair;
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_member(const char* str)
+{
+    uint32_t keyvalue = add();
+    values_[keyvalue].start_ = Invalid;
+    values_[keyvalue].size_ = Invalid;
+    values_[keyvalue].next_ = Invalid;
+    values_[keyvalue].type_ = static_cast<uint32_t>(JsonType::KeyValue);
+
+    auto [n0, v0] = parse_string(str);
+    str = n0;
+    if(CPPJSON_NULL == str) {
+        return InvalidPair;
+    }
+    values_[keyvalue].start_ = v0;
+    str = whitespace(str);
+    if(end_ <= str || ':' != str[0]) {
+        return InvalidPair;
+    }
+    str = whitespace(str + 1);
+    if(end_ <= str) {
+        return InvalidPair;
+    }
+    auto [n1, v1] = parse_value(str);
+    values_[keyvalue].size_ = v1;
+    return {n1, keyvalue};
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_array(const char* str)
+{
+    CPPJSON_ASSERT('[' == str[0]);
+    if(max_nesting_ < ++nesting_) {
+        return InvalidPair;
+    }
+    uint32_t object = add();
+    values_[object].start_ = reinterpret_cast<uint64_t>(str);
+    values_[object].size_ = 0;
+    values_[object].next_ = Invalid;
+    values_[object].type_ = static_cast<uint32_t>(JsonType::Array);
+    ++str;
+    bool needs_value = false;
+    bool needs_comma = false;
+    while(str < end_) {
+        str = whitespace(str);
+        if(end_ <= str) {
+            return InvalidPair;
+        }
+        switch(str[0]) {
+        case ']':
+            --nesting_;
+            if(!needs_value) {
+                return {str + 1, object};
+            } else {
+                return InvalidPair;
+            }
+        case ',':
+            if(needs_value) {
+                return InvalidPair;
+            }
+            ++str;
+            needs_value = true;
+            needs_comma = false;
+            break;
+        default:
+            if(needs_comma) {
+                return InvalidPair;
+            }
+            auto [n, v] = parse_array_value(str);
+            str = n;
+            if(CPPJSON_NULL == str) {
+                return InvalidPair;
+            }
+            add_value(object, v);
+            needs_value = false;
+            needs_comma = true;
+            break;
+        }
+    }
+    return InvalidPair;
+}
+
+std::tuple<const char*, uint32_t> JsonReader::parse_array_value(const char* str)
+{
+    uint32_t arrayvalue = add();
+    values_[arrayvalue].start_ = Invalid;
+    values_[arrayvalue].size_ = Invalid;
+    values_[arrayvalue].next_ = Invalid;
+    values_[arrayvalue].type_ = static_cast<uint32_t>(JsonType::ArrayValue);
+
+    auto [n0, v0] = parse_value(str);
+    str = n0;
+    if(CPPJSON_NULL == str) {
+        return InvalidPair;
+    }
+    values_[arrayvalue].size_ = v0;
+    return {n0, arrayvalue};
+}
+
+const char* JsonReader::parse_true(const char* str)
+{
+    CPPJSON_ASSERT('t' == str[0]);
+    if(end_ <= (str + 3)) {
+        return CPPJSON_NULL;
+    }
+    if('r' == str[1] && 'u' == str[2] && 'e' == str[3]) {
+        return str + 4;
+    }
+    return CPPJSON_NULL;
+}
+
+const char* JsonReader::parse_false(const char* str)
+{
+    CPPJSON_ASSERT('f' == str[0]);
+    if(end_ <= (str + 4)) {
+        return CPPJSON_NULL;
+    }
+    if('a' == str[1] && 'l' == str[2] && 's' == str[3] && 'e' == str[4]) {
+        return str + 5;
+    }
+    return CPPJSON_NULL;
+}
+
+const char* JsonReader::parse_null(const char* str)
+{
+    CPPJSON_ASSERT('n' == str[0]);
+    if(end_ <= (str + 3)) {
+        return CPPJSON_NULL;
+    }
+    if('u' == str[1] && 'l' == str[2] && 'l' == str[3]) {
+        return str + 4;
+    }
+    return CPPJSON_NULL;
+}
+
+} // namespace cppjson
+#endif // CPPJSON_IMPLEMENTATION
