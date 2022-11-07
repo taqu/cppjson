@@ -28,7 +28,7 @@ void traverse_null(cppjson::JsonProxy proxy);
 
 void traverse(cppjson::JsonProxy proxy)
 {
-	using namespace cppjson;
+    using namespace cppjson;
     switch(proxy.type()) {
     case JsonType::Object:
         traverse_object(proxy);
@@ -60,21 +60,21 @@ void traverse(cppjson::JsonProxy proxy)
     case JsonType::Null:
         traverse_null(proxy);
         break;
-	}
+    }
 }
 
 void traverse_object(cppjson::JsonProxy proxy)
 {
     using namespace cppjson;
     printf("{");
-	for (JsonProxy i = proxy.begin(); i; i = i.next()) {
+    for (JsonProxy i = proxy.begin(); i; i = i.next()) {
         JsonType type = i.type();
         char key[128];
         i.key().getString(key);
         printf("%s: ", key);
         traverse(i.value());
         printf(", ");
-	}
+    }
     printf("}");
 }
 
@@ -168,11 +168,7 @@ void test(const char* path)
 
 int main(void)
 {
-	std::vector<File> files;
-	gather(files, "../JSONTestSuite/test_parsing/", "*.json");
-	test(files);
-	
-	test("../test00.json");
+    test("../test00.json");
 	return 0;
 }
 ```
