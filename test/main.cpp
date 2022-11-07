@@ -114,20 +114,20 @@ void test(const std::vector<File>& files)
         printf("[%zd] %s", i, file.path_.c_str());
         bool result = reader.parse(data, data + size);
         switch(file.type_) {
-        case File::Type::Valid:
-            assert(result);
-            printf("  %d\n", result);
-            break;
-        case File::Type::Invalid:
-            assert(!result);
-            printf("  %d\n", result);
-            break;
-        case File::Type::Either:
-            printf("  %d\n", result);
-            break;
-        default:
-            assert(false);
-            break;
+            case File::Type::Valid:
+                assert(result);
+                printf("  %d\n", result);
+                break;
+            case File::Type::Invalid:
+                assert(!result);
+                printf("  %d\n", result);
+                break;
+            case File::Type::Either:
+                printf("  %d\n", result);
+                break;
+            default:
+                assert(false);
+                break;
         }
         ::free(data);
     }
@@ -148,38 +148,38 @@ void traverse(cppjson::JsonProxy proxy)
 {
     using namespace cppjson;
     switch(proxy.type()) {
-    case JsonType::Object:
-        traverse_object(proxy);
-        break;
-    case JsonType::Array:
-        traverse_array(proxy);
-        break;
-    case JsonType::KeyValue:
-        traverse_keyvalue(proxy);
-        break;
-    case JsonType::ArrayValue:
-        traverse_arrayvalue(proxy);
-        break;
-    case JsonType::String:
-        traverse_string(proxy);
-        break;
-    case JsonType::Number:
-        traverse_number(proxy);
-        break;
-    case JsonType::Integer:
-        traverse_integer(proxy);
-        break;
-    case JsonType::True:
-        traverse_true(proxy);
-        break;
-    case JsonType::False:
-        traverse_false(proxy);
-        break;
-    case JsonType::Null:
-        traverse_null(proxy);
-        break;
-    default:
-        break;
+        case JsonType::Object:
+            traverse_object(proxy);
+            break;
+        case JsonType::Array:
+            traverse_array(proxy);
+            break;
+        case JsonType::KeyValue:
+            traverse_keyvalue(proxy);
+            break;
+        case JsonType::ArrayValue:
+            traverse_arrayvalue(proxy);
+            break;
+        case JsonType::String:
+            traverse_string(proxy);
+            break;
+        case JsonType::Number:
+            traverse_number(proxy);
+            break;
+        case JsonType::Integer:
+            traverse_integer(proxy);
+            break;
+        case JsonType::True:
+            traverse_true(proxy);
+            break;
+        case JsonType::False:
+            traverse_false(proxy);
+            break;
+        case JsonType::Null:
+            traverse_null(proxy);
+            break;
+        default:
+            break;
     }
 }
 
