@@ -1,7 +1,7 @@
 #ifndef INC_CPPJSON_H_
 #define INC_CPPJSON_H_
 /*
-﻿# License
+# License
 This software is distributed under two licenses, choose whichever you like.
 
 ## MIT License
