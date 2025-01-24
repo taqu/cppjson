@@ -174,6 +174,8 @@ struct JsonProxy
      */
     double getFloat64() const;
 
+    bool compareKey(const char* str) const;
+
     uint64_t value_;
     const char* data_;
     const JsonValue* values_;
@@ -342,6 +344,16 @@ double JsonProxy::getFloat64() const
     double value = strtod(buffer, CPPJSON_NULL);
 #endif
     return value;
+}
+
+bool JsonProxy::compareKey(const char* str) const
+{
+    CPPJSON_ASSERT(nullptr != str);
+    CPPJSON_ASSERT(JsonReader::Invalid != value_);
+    if(JsonType::KeyValue != type()) {
+        return false;
+    }
+    return 0 == ::strncmp(str, data_ + values_[value_].start_, values_[value_].size_);
 }
 
 JsonReader::JsonReader(int32_t max_nesting, CPPJSON_MALLOC_TYPE alloc, CPPJSON_FREE_TYPE dealloc)
